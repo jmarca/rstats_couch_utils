@@ -52,28 +52,41 @@ couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1)){
 couch.bulk.docs.save <- function(district,year,vdsid,docs){
 
   ## assume here (because I am lazy) that docs is a list of json encoded records, one per doc
-  bulkdocs = paste('{"docs":[',paste(docs, collapse=','),']}',sep='')
 
-  ## form the URI for the call
+  ## push 1000 at a time
+  i = 10000
+  if(i > length(docs)) i = length(docs)
 
-  ## first the db name
-  restful = paste(dbname,district,year,sep='%2F')
+  j = 1
 
-  ## then the bulk docs target
-  uri=paste(couchdb,restful,'_bulk_docs',sep="/")
+  while(j < length(docs) ) {
 
-  ## use the simple callback mechanism
-  reader = basicTextGatherer()
+    bulkdocs = paste('{"docs":[',paste(docs[j:i], collapse=','),']}',sep='')
 
-  curlPerform(
-              url = uri
-              ,httpheader = c('Content-Type'='application/json')
-              ,customrequest = "POST"
-              ,postfields = bulkdocs
-              ,writefunction = reader$update
-              )
+    j = i+1;
+    i = j + 10000;
+    if(i > length(docs)) i = length(docs)
 
-  reader$value()
+    ## form the URI for the call
+
+    ## first the db name
+    restful = paste(dbname,district,year,sep='%2F')
+
+    ## then the bulk docs target
+    uri=paste(couchdb,restful,'_bulk_docs',sep="/")
+
+    ## use the simple callback mechanism
+    reader = basicTextGatherer()
+
+    curlPerform(
+                url = uri
+                ,httpheader = c('Content-Type'='application/json')
+                ,customrequest = "POST"
+                ,postfields = bulkdocs
+                ,writefunction = reader$update
+                )
+
+  }
 
 }
 
