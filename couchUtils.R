@@ -85,7 +85,7 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
                 ,postfields = bulkdocs
                 ,writefunction = reader$update
                 )
-
+    ## print(reader$value()
   }
 
 }
