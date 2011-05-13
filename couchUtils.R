@@ -4,6 +4,9 @@ couchdb = paste("http://",couchenv[1],":5984",sep='')
 
 
 couch.makedbname <- function( components ){
+  if(!is.null(dbname)){
+    components <- c(dbname,components)
+  }
   tolower(paste(components,collapse='%2F'))
 }
 
@@ -96,6 +99,9 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
 
   j = 1
 
+  db <- couch.makedbname(c(district,year,vdsid))
+  couch.makedb(db)
+
   while(j < length(docs) ) {
 
     bulkdocs = paste('{"docs":[',paste(docs[j:i], collapse=','),']}',sep='')
@@ -106,11 +112,8 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
 
     ## form the URI for the call
 
-    ## first the db name
-    restful = paste(dbname,district,year,sep='%2F')
-
     ## then the bulk docs target
-    uri=paste(couchdb,restful,'_bulk_docs',sep="/")
+    uri=paste(couchdb,db,'_bulk_docs',sep="/")
 
     ## use the simple callback mechanism
     reader = basicTextGatherer()
