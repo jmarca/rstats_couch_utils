@@ -16,7 +16,7 @@ couch.makedb <- function( db ){
   if(length(db)>0){
     db <- couch.makedbname(db)
   }
-
+  # print(paste('making db',db))
   privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":5984",sep='')
   uri=paste(privcouchdb,db,sep="/");
 
@@ -29,6 +29,7 @@ couch.makedb <- function( db ){
               ,writefunction = reader$update
               )
 
+  print(  reader$value() )
   reader$value()
 }
 
@@ -63,14 +64,42 @@ couch.put <- function(db,docname,doc){
   reader$value()
 }
 
+couch.delete <- function(db,docname,doc){
+
+  if(length(db)>0){
+    db <- couch.makedbname(db)
+  }
+
+  uri=paste(couchdb,db,docname,sep="/");
+  uri=paste(uri,paste('rev',doc['_rev'],sep='='),sep='?')
+  reader = basicTextGatherer()
+
+  curlPerform(
+              url = uri
+              ,httpheader = c('Content-Type'='application/json')
+              ,customrequest = "DELETE"
+              ,writefunction = reader$update
+              )
+
+  reader$value()
+}
+
 
 couch.check.is.processed <- function(district,year,vdsid){
 
   statusdoc = couch.get(c(district,year),vdsid)
   result <- TRUE ## default to done
-  fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
+  fieldcheck <- c('error','inprocess','processed','fixed') %in% names(statusdoc)
+  print(fieldcheck)
+  if(fieldcheck[2] && !fieldcheck[4]){
+    ## temporary fix for a big screw up
+    couch.delete(c(district,year),vdsid,statusdoc)
+    statusdoc = couch.get(c(district,year),vdsid)
+    result <- TRUE ## default to done
+    fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
+  }
   if(fieldcheck[1] && !fieldcheck[2] && !fieldcheck[3]){
-    putstatus <- fromJSON(couch.put(c(district,year),vdsid,list(inprocess=1)))
+    putstatus <- fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1,'fixed'=1)))
     fieldcheck <- c('error') %in% names(putstatus)
     if(!fieldcheck[1]){
       result <- FALSE
@@ -100,7 +129,9 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
   j = 1
 
   db <- couch.makedbname(c(district,year,vdsid))
-  couch.makedb(db)
+
+  couch.makedb(c(district,year,vdsid))
+
 
   while(j < length(docs) ) {
 
@@ -114,7 +145,7 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
 
     ## then the bulk docs target
     uri=paste(couchdb,db,'_bulk_docs',sep="/")
-
+    #print(paste('Saving docs to ', uri ))
     ## use the simple callback mechanism
     reader = basicTextGatherer()
 
@@ -125,7 +156,7 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
                 ,postfields = bulkdocs
                 ,writefunction = reader$update
                 )
-    ## print(reader$value()
+    # print(reader$value())
   }
 
 }
