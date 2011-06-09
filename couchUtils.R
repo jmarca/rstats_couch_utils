@@ -29,7 +29,7 @@ couch.makedb <- function( db ){
               ,writefunction = reader$update
               )
 
-  print(  reader$value() )
+  print(paste( 'making db',db, reader$value() ))
   reader$value()
 }
 
@@ -90,7 +90,7 @@ couch.check.is.processed <- function(district,year,vdsid){
   statusdoc = couch.get(c(district,year),vdsid)
   result <- TRUE ## default to done
   fieldcheck <- c('error','inprocess','processed','fixed') %in% names(statusdoc)
-  print(fieldcheck)
+  ## print(fieldcheck)
   if(fieldcheck[2] && !fieldcheck[4]){
     ## temporary fix for a big screw up
     couch.delete(c(district,year),vdsid,statusdoc)
