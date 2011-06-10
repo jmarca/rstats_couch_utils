@@ -16,8 +16,8 @@ nullTextGatherer <-
 function(txt = character(), max = NA, value = NULL)
 {
   update = function(str) {
-    ## let the string spill onto floor
-    ## txt <<-   c(txt, str)
+    ## let the prior string spill onto floor
+    txt <<-   c(txt)
     nchar(str, "bytes") # use bytes rather than chars as for UTF-8, etc. we may have fewer characters,
                         # but the C code for libcurl works in bytes. If we report chars and < bytes,
                         # libcurl terminates the download.
@@ -62,7 +62,7 @@ couch.makedb <- function( db ){
     db <- couch.makedbname(db)
   }
   # print(paste('making db',db))
-  privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":5984",sep='')
+  privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":",couchenv[4],sep='')
   uri=paste(privcouchdb,db,sep="/");
 
   reader = basicTextGatherer()
@@ -77,6 +77,27 @@ couch.makedb <- function( db ){
   print(paste( 'making db',db, reader$value() ))
   reader$value()
 }
+
+couch.deletedb <- function(db){
+
+  if(length(db)>0){
+    db <- couch.makedbname(db)
+  }
+
+  privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":",couchenv[4],sep='')
+  uri=paste(privcouchdb,db,sep="/");
+
+  reader = basicTextGatherer()
+  curlPerform(
+              url = uri
+              ,httpheader = c('Content-Type'='application/json')
+              ,customrequest = "DELETE"
+              ,writefunction = reader$update
+              )
+
+  print(paste('deleted db',db,reader$value(),collapse=' '))
+}
+
 
 couch.get <- function(db,doc){
 
@@ -130,24 +151,28 @@ couch.delete <- function(db,docname,doc){
 }
 
 
-couch.check.is.processed <- function(district,year,vdsid){
+
+couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE){
 
   statusdoc = couch.get(c(district,year),vdsid)
   result <- TRUE ## default to done
-  fieldcheck <- c('error','inprocess','processed','fixed') %in% names(statusdoc)
+  fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
   ## print(fieldcheck)
-  if(fieldcheck[2] && !fieldcheck[4]){
-    ## temporary fix for a big screw up
-    couch.delete(c(district,year),vdsid,statusdoc)
-    statusdoc = couch.get(c(district,year),vdsid)
-    result <- TRUE ## default to done
-    fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
-  }
+  ## if(fieldcheck[2] && !fieldcheck[4]){
+  ##   ## yet another temporary fix for a big screw up
+  ##   couch.delete(c(district,year),vdsid,statusdoc)
+  ##   statusdoc = couch.get(c(district,year),vdsid)
+  ##   result <- TRUE ## default to done
+  ##   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
+  ## }
   if(fieldcheck[1] && !fieldcheck[2] && !fieldcheck[3]){
-    putstatus <- fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1,'fixed'=1)))
+    putstatus <- fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
     fieldcheck <- c('error') %in% names(putstatus)
     if(!fieldcheck[1]){
+      ## did not get an error on write, so I set 'inprocess'
+      ## okay, my db, okay to break things
       result <- FALSE
+      if(deldb) couch.deletedb(c(district,year,vdsid))
     }
   }
   result
@@ -166,7 +191,7 @@ couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1)){
 ##################################################
 ## generalization of the above
 ##################################################
-couch.check.state <- function(district,year,vdsid,process)
+couch.check.state <- function(district,year,vdsid,process){
   statusdoc = couch.get(c(district,year),vdsid)
   result <- 'error' ## default to error
   fieldcheck <- c('error',process) %in% names(statusdoc)
@@ -254,13 +279,13 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
 }
 
 
-couch.async.bulk.docs.save <- function(district,year,vdsid,df){
+couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
 
-  ## here I assume that df is a datafame
+  ## here I assume that docdf is a datafame
 
   ## push 10000 at a time
   i <- 10000
-  maxi <- length(df[,1])
+  maxi <- length(docdf[,1])
   if(i > maxi ) i <- maxi
 
   j <- 1
@@ -269,32 +294,39 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,df){
 
   couch.makedb(c(district,year,vdsid))
 
+  ## the bulk docs target
+  uri=paste(couchdb,db,'_bulk_docs',sep="/")
+  reader = nullTextGatherer()
 
-  while(length(df)>0) {
+  while(length(docdf)>0) {
 
-    chunk <- df[j:i,]
-    if( i == length(df[,1]) ){
-      df <- data.frame()
+    chunk <- docdf[j:i,]
+    if( i == length(docdf[,1]) ){
+      docdf <- data.frame()
     }else{
-      df <- df[-j:-i,]
+      docdf <- docdf[-j:-i,]
     }
-    bulkdocs = paste('{"docs":[',paste(apply(chunk,1,toJSON ), collapse=','),']}',sep='')
+    ## for next iteration
+    if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
 
-    if(i > length(df[,1])) i <- length(df[,1])
+    jsondocs <- list()
+    for( row in 1:length(chunk[,1]) ){
+      keepcols <- !is.na(chunk[row,])
+      jsondocs[row] <- toJSON(chunk[row,keepcols])
+    }
+    bulkdocs = paste('{"docs":[',paste(jsondocs, collapse=','),']}',sep='')
+    ## fix JSON:  too many spaces, NA handled wrong
+    gbdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
+    ## this next isnot needed now that I am stripping NA entries above, but better safe
+    gbdocs <- gsub(" NA"," null"  ,x=gbdocs  ,perl=TRUE)
+    ## jsondocs <- list()
 
-    ## form the URI for the call
-
-    ## then the bulk docs target
-    uri=paste(couchdb,db,'_bulk_docs',sep="/")
-    #print(paste('Saving docs to ', uri ))
-    ## use the simple callback mechanism
-    reader = nullTextGatherer()
 
     curlPerform(
                 url = uri
                 ,httpheader = c('Content-Type'='application/json')
                 ,customrequest = "POST"
-                ,postfields = bulkdocs
+                ,postfields = gbdocs
                 ,writefunction = reader$update
                 )
 
