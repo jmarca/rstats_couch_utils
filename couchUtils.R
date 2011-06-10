@@ -1,6 +1,51 @@
 ## requires that dbname be set externally
-couchenv = Sys.getenv(c("COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS"))
-couchdb = paste("http://",couchenv[1],":5984",sep='')
+couchenv = Sys.getenv(c("COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS", "COUCHDB_PORT"))
+couchdb = paste("http://",couchenv[1],":",couchenv[4],sep='')
+
+## null reader for RCurl when bulk saving
+
+nullTextGatherer <-
+  #
+  # This is a function that is used to create a closure (i.e. a function with its own local variables
+  # whose values persist across invocations).  This is called to provide an instance of a function that is
+  # called when the libcurl engine has some text to be processed as it is reading the HTTP response from the
+  # server.
+  # The function that reads the text can do whatever it wants with it. This one simply
+  # cumulates it and makes it available via a second function.
+  #
+function(txt = character(), max = NA, value = NULL)
+{
+  update = function(str) {
+    ## let the string spill onto floor
+    ## txt <<-   c(txt, str)
+    nchar(str, "bytes") # use bytes rather than chars as for UTF-8, etc. we may have fewer characters,
+                        # but the C code for libcurl works in bytes. If we report chars and < bytes,
+                        # libcurl terminates the download.
+  }
+
+  reset = function() {  txt <<- character() }
+
+  val = if(missing(value))
+            function(collapse="", ...) {
+                         if(is.null(collapse))
+                             return(txt)
+
+                         paste(txt, collapse = collapse, ...)
+            }
+        else
+          function() value(txt)
+
+
+  ans = list(update = update,
+             value = val,
+             reset = reset)
+
+  class(ans) <- c("RCurlTextHandler", "RCurlCallbackFunction")
+
+  ans$reset()
+
+  ans
+}
 
 
 couch.makedbname <- function( components ){
@@ -118,6 +163,53 @@ couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1)){
 
 }
 
+##################################################
+## generalization of the above
+##################################################
+couch.check.state <- function(district,year,vdsid,process)
+  statusdoc = couch.get(c(district,year),vdsid)
+  result <- 'error' ## default to error
+  fieldcheck <- c('error',process) %in% names(statusdoc)
+  if( (fieldcheck[1] && statusdoc$error == "not_found") ||
+     !fieldcheck[2] ){
+    ## either no status doc, or no recorded state for this process, mark as 'todo'
+    result <- 'todo'
+  }else{
+    result <- statusdoc[process]
+  }
+  result
+}
+
+couch.checkout.for.processing <- function(district,year,vdsid,process){
+  result <- 'done' ## default to done
+  statusdoc = couch.get(c(district,year),vdsid)
+  fieldcheck <- c('error',process) %in% names(statusdoc)
+  if( (fieldcheck[1] && statusdoc$error == "not_found") ){
+    result = 'todo'
+    statusdoc = list() ## R doesn't interpolate variables in statements like list(process='state')
+    statusdoc[process]='inprocess';
+    putstatus <- fromJSON(couch.put(c(district,year),vdsid,statusdoc))
+    fieldcheck <- c('error') %in% names(putstatus)
+    if(!fieldcheck[1]){
+      result <- 'error'
+    }
+
+  }else if( !fieldcheck[2] ||  statusdoc[process] == 'todo' ){
+    result = 'todo'
+    statusdoc[process]='inprocess';
+    putstatus <- fromJSON(couch.put(c(district,year),vdsid,statusdoc))
+    fieldcheck <- c('error') %in% names(putstatus)
+    if(!fieldcheck[1]){
+      result <- 'error'
+    }
+  }else{
+    ## have status doc, process field, but not in 'todo' state, so report what state it is in
+    result = statusdoc[process]
+  }
+  result
+}
+#########
+
 couch.bulk.docs.save <- function(district,year,vdsid,docs){
 
   ## assume here (because I am lazy) that docs is a list of json encoded records, one per doc
@@ -147,7 +239,7 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
     uri=paste(couchdb,db,'_bulk_docs',sep="/")
     #print(paste('Saving docs to ', uri ))
     ## use the simple callback mechanism
-    reader = basicTextGatherer()
+    reader = nullTextGatherer()
 
     curlPerform(
                 url = uri
@@ -156,7 +248,56 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
                 ,postfields = bulkdocs
                 ,writefunction = reader$update
                 )
-    # print(reader$value())
+
+  }
+
+}
+
+
+couch.async.bulk.docs.save <- function(district,year,vdsid,df){
+
+  ## here I assume that df is a datafame
+
+  ## push 10000 at a time
+  i <- 10000
+  maxi <- length(df[,1])
+  if(i > maxi ) i <- maxi
+
+  j <- 1
+
+  db <- couch.makedbname(c(district,year,vdsid))
+
+  couch.makedb(c(district,year,vdsid))
+
+
+  while(length(df)>0) {
+
+    chunk <- df[j:i,]
+    if( i == length(df[,1]) ){
+      df <- data.frame()
+    }else{
+      df <- df[-j:-i,]
+    }
+    bulkdocs = paste('{"docs":[',paste(apply(chunk,1,toJSON ), collapse=','),']}',sep='')
+
+    if(i > length(df[,1])) i <- length(df[,1])
+
+    ## form the URI for the call
+
+    ## then the bulk docs target
+    uri=paste(couchdb,db,'_bulk_docs',sep="/")
+    #print(paste('Saving docs to ', uri ))
+    ## use the simple callback mechanism
+    reader = nullTextGatherer()
+
+    curlPerform(
+                url = uri
+                ,httpheader = c('Content-Type'='application/json')
+                ,customrequest = "POST"
+                ,postfields = bulkdocs
+                ,writefunction = reader$update
+                )
+
   }
 
 }
