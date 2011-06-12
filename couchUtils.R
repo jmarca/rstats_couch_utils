@@ -284,7 +284,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
   ## here I assume that docdf is a datafame
 
   ## push 10000 at a time
-  i <- 10000
+  i <- 50000
   maxi <- length(docdf[,1])
   if(i > maxi ) i <- maxi
 
@@ -308,24 +308,17 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
     }
     ## for next iteration
     if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
-
-    jsondocs <- list()
-    for( row in 1:length(chunk[,1]) ){
-      keepcols <- !is.na(chunk[row,])
-      jsondocs[row] <- toJSON(chunk[row,keepcols])
-    }
-    bulkdocs = paste('{"docs":[',paste(jsondocs, collapse=','),']}',sep='')
+    jsondocs <- list('docs'=chunk)
+    bulkdocs = toJSON(jsondocs,collapse='')
     ## fix JSON:  too many spaces, NA handled wrong
-    gbdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
-    ## this next isnot needed now that I am stripping NA entries above, but better safe
-    gbdocs <- gsub(" NA"," null"  ,x=gbdocs  ,perl=TRUE)
-
-
+    bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
+    ## this next is needed again
+    bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
     curlPerform(
                 url = uri
                 ,httpheader = c('Content-Type'='application/json')
                 ,customrequest = "POST"
-                ,postfields = gbdocs
+                ,postfields = bulkdocs
                 ,writefunction = reader$update
                 )
 
@@ -335,5 +328,33 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
 
   gc()
 
+}
+## testing two different ways
+
+## loser by a mile:
+jsondump1 <- function(chunk){
+  jsondocs <- list()
+  for( row in 1:length(chunk[,1]) ){
+    keepcols <- !is.na(chunk[row,])
+    jsondocs[row] <- toJSON(chunk[row,keepcols])
+  }
+  bulkdocs = paste('{"docs":[',paste(jsondocs, collapse=','),']}',sep='')
+  ## fix JSON:  too many spaces, NA handled wrong
+  bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
+  ## this next isnot needed now that I am stripping NA entries above, but better safe
+  bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
+  bulkdocs
+}
+
+## the winner!
+jsondump2 <- function(chunk){
+  ## simple structure for toJSON to unroll the loop internally
+  jsondocs <- list('docs'=chunk)
+  bulkdocs = toJSON(jsondocs,collapse='')
+  ## fix JSON:  too many spaces, NA handled wrong
+  bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
+  ## this next is needed again
+  bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
+  bulkdocs
 }
 
