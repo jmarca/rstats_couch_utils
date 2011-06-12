@@ -319,7 +319,6 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
     gbdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
     ## this next isnot needed now that I am stripping NA entries above, but better safe
     gbdocs <- gsub(" NA"," null"  ,x=gbdocs  ,perl=TRUE)
-    ## jsondocs <- list()
 
 
     curlPerform(
@@ -330,7 +329,11 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
                 ,writefunction = reader$update
                 )
 
+    rm(jsondocs,chunk)
+
   }
+
+  gc()
 
 }
 
