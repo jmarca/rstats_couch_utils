@@ -278,6 +278,7 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
 
 }
 
+library('plyr')
 
 couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
 
@@ -308,12 +309,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
     }
     ## for next iteration
     if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
-    jsondocs <- list('docs'=chunk)
-    bulkdocs = toJSON(jsondocs,collapse='')
-    ## fix JSON:  too many spaces, NA handled wrong
-    bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
-    ## this next is needed again
-    bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
+    bulkdocs <- jsondump4(chunk)
     curlPerform(
                 url = uri
                 ,httpheader = c('Content-Type'='application/json')
@@ -327,30 +323,57 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
 }
 ## testing two different ways
 
-## loser by a mile:
-jsondump1 <- function(chunk){
-  jsondocs <- list()
-  for( row in 1:length(chunk[,1]) ){
-    keepcols <- !is.na(chunk[row,])
-    jsondocs[row] <- toJSON(chunk[row,keepcols])
-  }
-  bulkdocs = paste('{"docs":[',paste(jsondocs, collapse=','),']}',sep='')
-  ## fix JSON:  too many spaces, NA handled wrong
-  bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
-  ## this next isnot needed now that I am stripping NA entries above, but better safe
-  bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
-  bulkdocs
-}
 
-## the winner!
-jsondump2 <- function(chunk){
-  ## simple structure for toJSON to unroll the loop internally
-  jsondocs <- list('docs'=chunk)
-  bulkdocs = toJSON(jsondocs,collapse='')
+## jsondump1 <- function(chunk){
+##   jsondocs <- list()
+##   for( row in 1:length(chunk[,1]) ){
+##     keepcols <- !is.na(chunk[row,])
+##     jsondocs[row] <- toJSON(chunk[row,keepcols])
+##   }
+##   bulkdocs = paste('{"docs":[',paste(jsondocs, collapse=','),']}',sep='')
+##   ## fix JSON:  too many spaces, NA handled wrong
+##   bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
+##   ## this next isnot needed now that I am stripping NA entries above, but better safe
+##   bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
+##   bulkdocs
+## }
+
+
+## jsondump2 <- function(chunk){
+##   bulkdocs <- paste('{"docs":[',paste( ddply(chunk,"ts",toJSON)$V1,collapse=','),']}')
+##   ## fix JSON:  too many spaces, NA handled wrong
+##   bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
+##   ## this next is needed again
+##   bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
+##   bulkdocs
+## }
+
+
+## jsondump3 <- function(chunk){
+##   bulkdocs <- paste('{"docs":[',
+##     foreach(i=1:nrow(chunk), .combine=paste) %do%
+##     toJSON(chunk[i,])
+##                     ,']}')
+##   ## fix JSON:  too many spaces, NA handled wrong
+##   bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
+##   ## this next is needed again
+##   bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
+##   bulkdocs
+## }
+
+## and the winner is:
+numeric.cols <- 1:35
+text.cols <- 36:37
+jsondump4 <- function(chunk){
+  num.data <- apply(chunk[,numeric.cols],1,toJSON)
+  text.data <- apply(chunk[,text.cols],1,toJSON)
+  bulkdocs <- gsub('} {',',',x=paste(num.data,text.data,collapse=','),perl=TRUE)
+  bulkdocs <- paste('{"docs":[',bulkdocs,']}')
   ## fix JSON:  too many spaces, NA handled wrong
   bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
   ## this next is needed again
   bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
   bulkdocs
 }
+
 
