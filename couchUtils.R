@@ -310,14 +310,28 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
     ## for next iteration
     if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
     bulkdocs <- jsondump4(chunk)
-    curlPerform(
-                url = uri
-                ,httpheader = c('Content-Type'='application/json')
-                ,customrequest = "POST"
-                ,postfields = bulkdocs
-                ,writefunction = reader$update
-                ,curl = h
-                )
+    curlresult <- try( curlPerform(
+                                   url = uri
+                                   ,httpheader = c('Content-Type'='application/json')
+                                   ,customrequest = "POST"
+                                   ,postfields = bulkdocs
+                                   ,writefunction = reader$update
+                                   ,curl = h
+                                   )
+                      )
+    if(class(curlresult) == "try-error"){
+      print ("\n Error saving to couchdb, trying again \n")
+      rm(h)
+      h = getCurlHandle()
+      curlPerform(
+                  url = uri
+                  ,httpheader = c('Content-Type'='application/json')
+                  ,customrequest = "POST"
+                  ,postfields = bulkdocs
+                  ,writefunction = reader$update
+                  ,curl = h
+                  )
+    }
 
   }
   rm(h)
