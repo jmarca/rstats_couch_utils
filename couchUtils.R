@@ -165,7 +165,7 @@ couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE){
   ##   result <- TRUE ## default to done
   ##   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
   ## }
-  if(fieldcheck[1] && !fieldcheck[2] && !fieldcheck[3]){
+  if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
     putstatus <- fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
     fieldcheck <- c('error') %in% names(putstatus)
     if(!fieldcheck[1]){
