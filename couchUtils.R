@@ -278,7 +278,6 @@ couch.bulk.docs.save <- function(district,year,vdsid,docs){
 
 }
 
-library('plyr')
 
 couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
 
