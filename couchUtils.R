@@ -298,6 +298,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
   ## the bulk docs target
   uri=paste(couchdb,db,'_bulk_docs',sep="/")
   reader = nullTextGatherer()
+  h = getCurlHandle()
 
   while(length(docdf)>0) {
 
@@ -316,6 +317,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
                 ,customrequest = "POST"
                 ,postfields = bulkdocs
                 ,writefunction = reader$update
+                ,curl = h
                 )
 
     rm(jsondocs,chunk)
@@ -366,9 +368,15 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
 ## }
 
 ## and the winner is:
-numeric.cols <- 1:35
-text.cols <- 36:37
 jsondump4 <- function(chunk){
+  colnames <- names(chunk)
+
+  text.cols    <-  grep( pattern="^(_id|ts)$",x=colnames,perl=TRUE)
+  numeric.cols <-  grep( pattern="^(_id|ts)$",x=colnames,perl=TRUE,invert=TRUE)
+
+  ## numeric.cols <- 1:35
+  ## text.cols <- 36:37
+
   num.data <- apply(chunk[,numeric.cols],1,toJSON)
   text.data <- apply(chunk[,text.cols],1,toJSON)
   bulkdocs <- gsub('} {',',',x=paste(num.data,text.data,collapse=','),perl=TRUE)
@@ -376,7 +384,7 @@ jsondump4 <- function(chunk){
   ## fix JSON:  too many spaces, NA handled wrong
   bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
   ## this next is needed again
-  bulkdocs <- gsub(" NA"," null"  ,x=bulkdocs  ,perl=TRUE)
+  bulkdocs <- gsub("[^,{}:]*:\\s*NA\\s*,"," "  ,x=bulkdocs  ,perl=TRUE)
   bulkdocs
 }
 
