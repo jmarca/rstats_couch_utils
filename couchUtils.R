@@ -320,10 +320,8 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
                 ,curl = h
                 )
 
-    rm(jsondocs,chunk)
-
   }
-
+  rm(h)
   gc()
 
 }
