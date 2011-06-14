@@ -2,6 +2,13 @@
 couchenv = Sys.getenv(c("COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS", "COUCHDB_PORT"))
 couchdb = paste("http://",couchenv[1],":",couchenv[4],sep='')
 
+## global curl opts
+
+ options(RCurlOptions = list(
+           fresh.connect = TRUE
+           ))
+
+
 ## null reader for RCurl when bulk saving
 
 nullTextGatherer <-
@@ -284,7 +291,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
   ## here I assume that docdf is a datafame
 
   ## push 10000 at a time
-  i <- 50000
+  i <- 10000
   maxi <- length(docdf[,1])
   if(i > maxi ) i <- maxi
 
@@ -297,7 +304,6 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
   ## the bulk docs target
   uri=paste(couchdb,db,'_bulk_docs',sep="/")
   reader = nullTextGatherer()
-  h = getCurlHandle()
 
   while(length(docdf)>0) {
 
@@ -310,6 +316,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
     ## for next iteration
     if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
     bulkdocs <- jsondump4(chunk)
+    h = getCurlHandle()
     curlresult <- try( curlPerform(
                                    url = uri
                                    ,httpheader = c('Content-Type'='application/json')
