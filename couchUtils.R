@@ -129,7 +129,7 @@ couch.get <- function(db,docname, local=TRUE){
 
 couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE){
 
-  if(length(db)>0){
+  if(length(db)>1){
     db <- couch.makedbname(db)
   }
 
