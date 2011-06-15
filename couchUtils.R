@@ -322,24 +322,29 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
     print ('local replicator dump')
     ## now that local save is done, must replicate to remote
     repid <- couch.makedbname(c(district,year,vdsid))
-
     src <- db
     tgt <- paste(privcouchdb,db,sep="/");
-
-    print(couch.put('_replicator'
-              ,repid
-              ,toJSON(
-                     list("source" = src
-                          , "target" = tgt
-                          , "create_target" = TRUE)
-                     )
-              ,local=TRUE
-              ,priv=TRUE
-              ))
+    couch.start.replication(src,tgt,id)
   }
   gc()
 
 }
+
+couch.start.replication <- function(src,tgt,id,continuous=FALSE){
+
+  couch.put('_replicator'
+                  ,id
+                  ,toJSON(
+                          list("source" = src
+                               , "target" = tgt
+                               , "create_target" = TRUE
+                               , "continuous" = continuous)
+                     )
+                  ,local=TRUE
+                  ,priv=TRUE
+                  )
+}
+
 ## testing two different ways
 
 
