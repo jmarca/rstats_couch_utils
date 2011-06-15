@@ -69,7 +69,8 @@ couch.makedbname <- function( components ){
   if(!is.null(dbname)){
     components <- c(dbname,components)
   }
-  tolower(paste(components,collapse='%2F'))
+  components <- tolower(components)
+  paste(components,collapse='%2F')
 }
 
 
@@ -115,10 +116,32 @@ couch.deletedb <- function(db, local=TRUE){
   print(paste('deleted db',db,reader$value(),collapse=' '))
 }
 
+couch.session <- function(h,local=TRUE){
+  curlSetOpt(cookiejar='.cookies.txt', curl=h)
+  cdb <- couchdb
+  name <-couchenv[2]
+  pwd <- couchenv[3]
+  if(local){
+    cdb <- localcouchdb
+    name <-couchenv[6]
+    pwd <- couchenv[7]
+  }
+##  print(paste(cdb,name,pwd))
+  reader = basicTextGatherer()
+  curlPerform(
+              url = paste(cdb,"_session",sep="/")
+              ,customrequest = "POST"
+              ,writefunction = reader$update
+              ,postfields = paste(paste('name',name,sep='='),paste('password',pwd,sep='='),sep='&')
+              ,curl=h
+              ,httpauth='ANY'
+              )
+  reader$value()
+}
 
 couch.get <- function(db,docname, local=TRUE){
 
-  if(length(db)>0){
+  if(length(db)>1){
     db <- couch.makedbname(db)
   }
   uri=paste(couchdb,db,docname,sep="/");
@@ -127,20 +150,22 @@ couch.get <- function(db,docname, local=TRUE){
 
 }
 
-couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE){
+couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle()){
 
   if(length(db)>1){
     db <- couch.makedbname(db)
   }
-
   cdb <- couchdb
+  userpwd <- c()
   if(local && priv){
-    cdb <- localprivcouchdb
+    userpwd <- paste(couchenv[6],":",couchenv[7])
+    cdb <- localcouchdb
   }else{
-    if(local) cdb <- localcouchdb
-    if(priv) cdb <- privcouchdb
+    if(local){ cdb <- localcouchdb}
+    if(priv) {userpwd <- paste(couchenv[2],":",couchenv[3])}
   }
   uri=paste(cdb,db,docname,sep="/");
+  print(uri)
 
   reader = basicTextGatherer()
 
@@ -148,13 +173,12 @@ couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE){
               url = uri
               ,httpheader = c('Content-Type'='application/json')
               ,customrequest = "PUT"
-              ,postfields = toJSON(doc)
+              ,postfields = toJSON(doc,collapse='')
               ,writefunction = reader$update
+              ,curl=h
               )
-
   reader$value()
 }
-
 couch.delete <- function(db,docname,doc, local=TRUE){
 
   if(length(db)>0){
@@ -209,7 +233,7 @@ couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE)
 couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE){
 
   current = couch.get(c(district,year),vdsid)
-  doc = merge (current,doc)
+  doc = merge (doc,current)
   couch.put(c(district,year),vdsid,doc)
 
 }
@@ -332,16 +356,23 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
 
 couch.start.replication <- function(src,tgt,id,continuous=FALSE){
 
+  h = getCurlHandle()
+  couch.session(h)
+  current <- couch.get('_replicator',id,local=TRUE)
+  doc = list("source" = src,"target" = tgt
+        , "create_target" = TRUE
+        , "continuous" = continuous
+        )
+  if(length(current$error) == 0){
+    doc = merge(doc,current)
+    doc['_rev']=current['_rev']
+  }
   couch.put('_replicator'
                   ,id
-                  ,toJSON(
-                          list("source" = src
-                               , "target" = tgt
-                               , "create_target" = TRUE
-                               , "continuous" = continuous)
-                     )
-                  ,local=TRUE
-                  ,priv=TRUE
+            ,doc
+            ,local=TRUE
+            ,priv=TRUE
+            ,h=h
                   )
 }
 
@@ -400,7 +431,7 @@ jsondump4 <- function(chunk){
   bulkdocs <- gsub('} {',',',x=paste(num.data,text.data,collapse=','),perl=TRUE)
   bulkdocs <- paste('{"docs":[',bulkdocs,']}')
   ## fix JSON:  too many spaces, NA handled wrong
-  bulkdocs <- gsub("\\s\\s*"," ",x=bulkdocs,perl=TRUE)
+  bulkdocs <- gsub("\\s+"," ",x=bulkdocs,perl=TRUE)
   ## this next is needed again
   bulkdocs <- gsub("[^,{}:]*:\\s*NA\\s*,"," "  ,x=bulkdocs  ,perl=TRUE)
   bulkdocs
