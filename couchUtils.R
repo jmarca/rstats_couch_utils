@@ -1,6 +1,16 @@
-## requires that dbname be set externally
-couchenv = Sys.getenv(c("COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS", "COUCHDB_PORT"))
+## requires that dbname, etc be set externally
+## non-local is where to go to be sure (tracking db)
+## and also the target of all replication calls
+## local is where to send bulk saves,
+## and the source of replication calls
+couchenv = Sys.getenv(c(
+  "COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS", "COUCHDB_PORT"
+  , "COUCHDB_LOCALHOST", "COUCHDB_LOCALUSER", "COUCHDB_LOCALPASS", "COUCHDB_LOCALPORT"))
+
 couchdb = paste("http://",couchenv[1],":",couchenv[4],sep='')
+privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":",couchenv[4],sep='')
+localcouchdb = paste("http://",couchenv[5],":",couchenv[8],sep='')
+localprivcouchdb = paste("http://",couchenv[6],":",couchenv[7],"@",couchenv[5],":",couchenv[8],sep='')
 
 ## global curl opts
 
@@ -63,15 +73,14 @@ couch.makedbname <- function( components ){
 }
 
 
-couch.makedb <- function( db ){
+couch.makedb <- function( db, local=TRUE ){
 
   if(length(db)>0){
     db <- couch.makedbname(db)
   }
   # print(paste('making db',db))
-  privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":",couchenv[4],sep='')
   uri=paste(privcouchdb,db,sep="/");
-
+  if(local) uri=paste(localprivcouchdb,db,sep="/");
   reader = basicTextGatherer()
 
   curlPerform(
@@ -85,7 +94,7 @@ couch.makedb <- function( db ){
   reader$value()
 }
 
-couch.deletedb <- function(db){
+couch.deletedb <- function(db, local=TRUE){
 
   if(length(db)>0){
     db <- couch.makedbname(db)
@@ -93,6 +102,7 @@ couch.deletedb <- function(db){
 
   privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":",couchenv[4],sep='')
   uri=paste(privcouchdb,db,sep="/");
+  if(local) uri=paste(localprivcouchdb,db,sep="/");
 
   reader = basicTextGatherer()
   curlPerform(
@@ -106,23 +116,31 @@ couch.deletedb <- function(db){
 }
 
 
-couch.get <- function(db,doc){
+couch.get <- function(db,docname, local=TRUE){
 
   if(length(db)>0){
     db <- couch.makedbname(db)
   }
-  uri=paste(couchdb,db,doc,sep="/");
+  uri=paste(couchdb,db,docname,sep="/");
+  if(local) uri=paste(localcouchdb,db,docname,sep="/");
   fromJSON(getURL(uri)[[1]])
 
 }
 
-couch.put <- function(db,docname,doc){
+couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE){
 
   if(length(db)>0){
     db <- couch.makedbname(db)
   }
 
-  uri=paste(couchdb,db,docname,sep="/");
+  cdb <- couchdb
+  if(local && priv){
+    cdb <- localprivcouchdb
+  }else{
+    if(local) cdb <- localcouchdb
+    if(priv) cdb <- privcouchdb
+  }
+  uri=paste(cdb,db,docname,sep="/");
 
   reader = basicTextGatherer()
 
@@ -137,13 +155,14 @@ couch.put <- function(db,docname,doc){
   reader$value()
 }
 
-couch.delete <- function(db,docname,doc){
+couch.delete <- function(db,docname,doc, local=TRUE){
 
   if(length(db)>0){
     db <- couch.makedbname(db)
   }
 
   uri=paste(couchdb,db,docname,sep="/");
+  if(local) uri=paste(localcouchdb,db,docname,sep="/");
   uri=paste(uri,paste('rev',doc['_rev'],sep='='),sep='?')
   reader = basicTextGatherer()
 
@@ -159,9 +178,9 @@ couch.delete <- function(db,docname,doc){
 
 
 
-couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE){
+couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE){
 
-  statusdoc = couch.get(c(district,year),vdsid)
+  statusdoc = couch.get(c(district,year),vdsid,local=local)
   result <- TRUE ## default to done
   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
   ## print(fieldcheck)
@@ -187,7 +206,7 @@ couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE){
 }
 
 
-couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1)){
+couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE){
 
   current = couch.get(c(district,year),vdsid)
   doc = merge (current,doc)
@@ -198,7 +217,7 @@ couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1)){
 ##################################################
 ## generalization of the above
 ##################################################
-couch.check.state <- function(district,year,vdsid,process){
+couch.check.state <- function(district,year,vdsid,process, local=TRUE){
   statusdoc = couch.get(c(district,year),vdsid)
   result <- 'error' ## default to error
   fieldcheck <- c('error',process) %in% names(statusdoc)
@@ -212,7 +231,7 @@ couch.check.state <- function(district,year,vdsid,process){
   result
 }
 
-couch.checkout.for.processing <- function(district,year,vdsid,process){
+couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRUE){
   result <- 'done' ## default to done
   statusdoc = couch.get(c(district,year),vdsid)
   fieldcheck <- c('error',process) %in% names(statusdoc)
@@ -242,51 +261,8 @@ couch.checkout.for.processing <- function(district,year,vdsid,process){
 }
 #########
 
-couch.bulk.docs.save <- function(district,year,vdsid,docs){
-
-  ## assume here (because I am lazy) that docs is a list of json encoded records, one per doc
-
-  ## push 1000 at a time
-  i = 10000
-  if(i > length(docs)) i = length(docs)
-
-  j = 1
-
-  db <- couch.makedbname(c(district,year,vdsid))
-
-  couch.makedb(c(district,year,vdsid))
-
-
-  while(j < length(docs) ) {
-
-    bulkdocs = paste('{"docs":[',paste(docs[j:i], collapse=','),']}',sep='')
-
-    j = i+1;
-    i = j + 10000;
-    if(i > length(docs)) i = length(docs)
-
-    ## form the URI for the call
-
-    ## then the bulk docs target
-    uri=paste(couchdb,db,'_bulk_docs',sep="/")
-    #print(paste('Saving docs to ', uri ))
-    ## use the simple callback mechanism
-    reader = nullTextGatherer()
-
-    curlPerform(
-                url = uri
-                ,httpheader = c('Content-Type'='application/json')
-                ,customrequest = "POST"
-                ,postfields = bulkdocs
-                ,writefunction = reader$update
-                )
-
-  }
-
-}
-
-
-couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
+## not really async, but whatever.  more like split up into pieces
+couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
 
   ## here I assume that docdf is a datafame
 
@@ -303,6 +279,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
 
   ## the bulk docs target
   uri=paste(couchdb,db,'_bulk_docs',sep="/")
+  if(local) uri=paste(localcouchdb,db,'_bulk_docs',sep="/");
   reader = nullTextGatherer()
 
   while(length(docdf)>0) {
@@ -341,7 +318,25 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf){
     }
 
   }
-  rm(h)
+  if (local){
+    print ('local replicator dump')
+    ## now that local save is done, must replicate to remote
+    repid <- couch.makedbname(c(district,year,vdsid))
+
+    src <- db
+    tgt <- paste(privcouchdb,db,sep="/");
+
+    print(couch.put('_replicator'
+              ,repid
+              ,toJSON(
+                     list("source" = src
+                          , "target" = tgt
+                          , "create_target" = TRUE)
+                     )
+              ,local=TRUE
+              ,priv=TRUE
+              ))
+  }
   gc()
 
 }
