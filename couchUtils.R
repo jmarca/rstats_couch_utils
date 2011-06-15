@@ -69,8 +69,14 @@ couch.makedbname <- function( components ){
   if(!is.null(dbname)){
     components <- c(dbname,components)
   }
-  components <- tolower(components)
-  paste(components,collapse='%2F')
+  tolower(paste(components,collapse='%2F'))
+}
+
+couch.makedbname.noescape <- function( components ){
+  if(!is.null(dbname)){
+    components <- c(dbname,components)
+  }
+  tolower(paste(components,collapse='/'))
 }
 
 
@@ -116,37 +122,32 @@ couch.deletedb <- function(db, local=TRUE){
   print(paste('deleted db',db,reader$value(),collapse=' '))
 }
 
-couch.session <- function(h,local=TRUE){
-  curlSetOpt(cookiejar='.cookies.txt', curl=h)
-  cdb <- couchdb
-  name <-couchenv[2]
-  pwd <- couchenv[3]
-  if(local){
-    cdb <- localcouchdb
-    name <-couchenv[6]
-    pwd <- couchenv[7]
+couch.post <- function(db,doc,local=TRUE,h=getCurlHandle()){
+  cdb <- localcouchdb
+  if(!local){
+    cdb <- couchdb
   }
-##  print(paste(cdb,name,pwd))
   reader = basicTextGatherer()
   curlPerform(
-              url = paste(cdb,"_session",sep="/")
+              url = paste(cdb,db,sep="/")
               ,customrequest = "POST"
+              ,httpheader = c('Content-Type'='application/json')
+              ,postfields = toJSON(doc,collapse='')
               ,writefunction = reader$update
-              ,postfields = paste(paste('name',name,sep='='),paste('password',pwd,sep='='),sep='&')
               ,curl=h
-              ,httpauth='ANY'
               )
   reader$value()
+
 }
 
-couch.get <- function(db,docname, local=TRUE){
+couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
 
   if(length(db)>1){
     db <- couch.makedbname(db)
   }
   uri=paste(couchdb,db,docname,sep="/");
   if(local) uri=paste(localcouchdb,db,docname,sep="/");
-  fromJSON(getURL(uri)[[1]])
+  fromJSON(getURL(uri)[[1]],curl=h)
 
 }
 
@@ -155,30 +156,30 @@ couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle())
   if(length(db)>1){
     db <- couch.makedbname(db)
   }
-  cdb <- couchdb
-  userpwd <- c()
-  if(local && priv){
-    userpwd <- paste(couchenv[6],":",couchenv[7])
-    cdb <- localcouchdb
-  }else{
-    if(local){ cdb <- localcouchdb}
-    if(priv) {userpwd <- paste(couchenv[2],":",couchenv[3])}
+  cdb <- localcouchdb
+  if(!local){
+    cdb <- couchdb
   }
   uri=paste(cdb,db,docname,sep="/");
-  print(uri)
+
+  if(priv){
+    couch.session(h)
+  }
 
   reader = basicTextGatherer()
 
+  print(paste('putting',uri,toJSON(doc,collapse=''),sep="\n"))
   curlPerform(
               url = uri
-              ,httpheader = c('Content-Type'='application/json')
               ,customrequest = "PUT"
+              ,httpheader = c('Content-Type'='application/json')
               ,postfields = toJSON(doc,collapse='')
               ,writefunction = reader$update
               ,curl=h
               )
   reader$value()
 }
+
 couch.delete <- function(db,docname,doc, local=TRUE){
 
   if(length(db)>0){
@@ -197,6 +198,29 @@ couch.delete <- function(db,docname,doc, local=TRUE){
               ,writefunction = reader$update
               )
 
+  reader$value()
+}
+
+## session isn't a json post, so has its own call to curlPerform
+couch.session <- function(h,local=TRUE){
+  curlSetOpt(cookiejar='.cookies.txt', curl=h)
+  cdb <- couchdb
+  name <-couchenv[2]
+  pwd <- couchenv[3]
+  if(local){
+    cdb <- localcouchdb
+    name <-couchenv[6]
+    pwd <- couchenv[7]
+  }
+  reader = basicTextGatherer()
+  curlPerform(
+              url = paste(cdb,"_session",sep="/")
+              ,customrequest = "POST"
+              ,writefunction = reader$update
+              ,postfields = paste(paste('name',name,sep='='),paste('password',pwd,sep='='),sep='&')
+              ,curl=h
+              ,httpauth='ANY'
+              )
   reader$value()
 }
 
@@ -343,22 +367,21 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
 
   }
   if (local){
-    print ('local replicator dump')
+    print ('local, so replicate to remote db')
     ## now that local save is done, must replicate to remote
-    repid <- couch.makedbname(c(district,year,vdsid))
-    src <- db
+    src <- couch.makedbname.noescape(c(district,year,vdsid))
     tgt <- paste(privcouchdb,db,sep="/");
-    couch.start.replication(src,tgt,id)
+    couch.start.replication(src,tgt)
   }
   gc()
 
 }
 
-couch.start.replication <- function(src,tgt,id,continuous=FALSE){
+couch.start.replication <- function(src,tgt,id=NULL,continuous=FALSE){
 
   h = getCurlHandle()
   couch.session(h)
-  current <- couch.get('_replicator',id,local=TRUE)
+  current <- couch.get('_replicator',id,local=TRUE,h=h)
   doc = list("source" = src,"target" = tgt
         , "create_target" = TRUE
         , "continuous" = continuous
@@ -367,13 +390,22 @@ couch.start.replication <- function(src,tgt,id,continuous=FALSE){
     doc = merge(doc,current)
     doc['_rev']=current['_rev']
   }
-  couch.put('_replicator'
-                  ,id
-            ,doc
-            ,local=TRUE
-            ,priv=TRUE
-            ,h=h
-                  )
+  print(paste("setting up replication doc:\n",toJSON(doc)))
+  if(is.null(id)){
+    ## no id, use post
+    couch.post('_replicator'
+               ,doc
+               ,local=TRUE
+               ,h=h
+               )
+  }else{
+    couch.put('_replicator'
+              ,id
+              ,doc
+              ,local=TRUE
+              ,h=h
+              )
+  }
 }
 
 ## testing two different ways
