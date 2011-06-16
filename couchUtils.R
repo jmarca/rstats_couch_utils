@@ -254,9 +254,10 @@ couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), l
   h = getCurlHandle()
   current = couch.get(c(district,year),vdsid,h=h)
   curr.names <- names(current)
-  if(length(curr.names)>0) {
+  if(length(curr.names)>0 && length(current$error)==0 ) {
     doc.names  <- names(doc)
     keep.names <- setdiff(curr.names,doc.names)
+    ##    print(paste('current',curr.names,'doc',doc.names,'keep',keep.names))
     if(length(keep.names)>0) doc[keep.names] = current[keep.names]
   }
   ## doc = merge (doc,current)
