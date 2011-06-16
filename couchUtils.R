@@ -366,13 +366,6 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
     }
 
   }
-  if (local){
-    print ('local, so replicate to remote db')
-    ## now that local save is done, must replicate to remote
-    src <- couch.makedbname.noescape(c(district,year,vdsid))
-    tgt <- paste(privcouchdb,db,sep="/");
-    couch.start.replication(src,tgt)
-  }
   gc()
 
 }
