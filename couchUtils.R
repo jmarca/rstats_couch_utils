@@ -226,14 +226,14 @@ couch.session <- function(h,local=TRUE){
 
 
 
-couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE){
+couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE,  h=getCurlHandle()){
 
-  statusdoc = couch.get(c(district,year),vdsid,local=local)
+  statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
   result <- TRUE ## default to done
   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
   ## print(fieldcheck)
   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
-    putstatus <- couch.save.is.processed(district,year,vdsid,doc=list('inprocess'=1))
+    putstatus <- couch.save.is.processed(district,year,vdsid,doc=list('inprocess'=1),h=h)
     print(putstatus)
     putstatus <- fromJSON(putstatus)
       ##fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
@@ -250,10 +250,11 @@ couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE)
 }
 
 
-couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE){
-  h = getCurlHandle()
+couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE, h=getCurlHandle()){
+
   current = couch.get(c(district,year),vdsid,h=h)
   curr.names <- names(current)
+  print(current)
   if(length(curr.names)>0 && length(current$error)==0 ) {
     doc.names  <- names(doc)
     keep.names <- setdiff(curr.names,doc.names)
