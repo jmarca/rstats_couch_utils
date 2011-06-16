@@ -381,30 +381,36 @@ couch.start.replication <- function(src,tgt,id=NULL,continuous=FALSE){
 
   h = getCurlHandle()
   couch.session(h)
-  current <- couch.get('_replicator',id,local=TRUE,h=h)
   doc = list("source" = src,"target" = tgt
         , "create_target" = TRUE
         , "continuous" = continuous
         )
-  if(length(current$error) == 0){
-    doc = merge(doc,current)
-    doc['_rev']=current['_rev']
+  if(!is.null(id)){
+    current <- couch.get('_replicator',id,local=TRUE,h=h)
+    if(length(current$error) == 0){
+      doc = merge(doc,current)
+      doc['_rev']=current['_rev']
+    }
   }
   print(paste("setting up replication doc:\n",toJSON(doc)))
   if(is.null(id)){
     ## no id, use post
-    couch.post('_replicator'
+    print(
+          couch.post('_replicator'
                ,doc
                ,local=TRUE
                ,h=h
                )
+        )
   }else{
-    couch.put('_replicator'
+    print(
+          couch.put('_replicator'
               ,id
               ,doc
               ,local=TRUE
               ,h=h
               )
+          )
   }
 }
 
