@@ -232,15 +232,11 @@ couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE)
   result <- TRUE ## default to done
   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
   ## print(fieldcheck)
-  ## if(fieldcheck[2] && !fieldcheck[4]){
-  ##   ## yet another temporary fix for a big screw up
-  ##   couch.delete(c(district,year),vdsid,statusdoc)
-  ##   statusdoc = couch.get(c(district,year),vdsid)
-  ##   result <- TRUE ## default to done
-  ##   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
-  ## }
   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
-    putstatus <- fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
+    putstatus <- couch.save.is.processed(district,year,vdsid,doc=list('inprocess'=1))
+    print(putstatus)
+    putstatus <- fromJSON(putstatus)
+      ##fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
     fieldcheck <- c('error') %in% names(putstatus)
     if(!fieldcheck[1]){
       ## did not get an error on write, so I set 'inprocess'
@@ -255,10 +251,16 @@ couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE)
 
 
 couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE){
-
-  current = couch.get(c(district,year),vdsid)
-  doc = merge (doc,current)
-  couch.put(c(district,year),vdsid,doc)
+  h = getCurlHandle()
+  current = couch.get(c(district,year),vdsid,h=h)
+  curr.names <- names(current)
+  if(length(curr.names)>0) {
+    doc.names  <- names(doc)
+    keep.names <- setdiff(curr.names,doc.names)
+    if(length(keep.names)>0) doc[keep.names] = current[keep.names]
+  }
+  ## doc = merge (doc,current)
+  couch.put(c(district,year),vdsid,doc,h=h)
 
 }
 
@@ -315,7 +317,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
   ## here I assume that docdf is a datafame
 
   ## push 10000 at a time
-  i <- 10000
+  i <- 1000
   maxi <- length(docdf[,1])
   if(i > maxi ) i <- maxi
 
@@ -377,11 +379,12 @@ couch.start.replication <- function(src,tgt,id=NULL,continuous=FALSE){
   doc = list("source" = src,"target" = tgt
         , "create_target" = TRUE
         , "continuous" = continuous
+	, "user_ctx" = list( "name"="james", "roles"=list("_admin","") )
         )
   if(!is.null(id)){
     current <- couch.get('_replicator',id,local=TRUE,h=h)
     if(length(current$error) == 0){
-      doc = merge(doc,current)
+      ##doc = merge(doc,current)
       doc['_rev']=current['_rev']
     }
   }
