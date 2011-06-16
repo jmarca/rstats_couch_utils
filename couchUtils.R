@@ -234,7 +234,7 @@ couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE,
   ## print(fieldcheck)
   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
     putstatus <- couch.save.is.processed(district,year,vdsid,doc=list('inprocess'=1),h=h)
-    print(putstatus)
+    # print(putstatus)
     putstatus <- fromJSON(putstatus)
       ##fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
     fieldcheck <- c('error') %in% names(putstatus)
@@ -254,7 +254,7 @@ couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), l
 
   current = couch.get(c(district,year),vdsid,h=h)
   curr.names <- names(current)
-  print(current)
+  # print(current)
   if(length(curr.names)>0 && length(current$error)==0 ) {
     doc.names  <- names(doc)
     keep.names <- setdiff(curr.names,doc.names)
