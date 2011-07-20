@@ -151,7 +151,7 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
 
 }
 
-couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle()){
+couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle(),dumper=jsondump5){
 
   if(length(db)>1){
     db <- couch.makedbname(db)
@@ -161,19 +161,19 @@ couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle())
     cdb <- couchdb
   }
   uri=paste(cdb,db,docname,sep="/");
-
+  uri=gsub("\\s","%20",x=uri,perl=TRUE)
   if(priv){
     couch.session(h)
   }
 
   reader = basicTextGatherer()
 
-  print(paste('putting',uri,toJSON(doc,collapse=''),sep="\n"))
+  print(paste('putting',uri))
   curlPerform(
               url = uri
               ,customrequest = "PUT"
               ,httpheader = c('Content-Type'='application/json')
-              ,postfields = toJSON(doc,collapse='')
+              ,postfields = dumper(doc)
               ,writefunction = reader$update
               ,curl=h
               )
@@ -312,6 +312,7 @@ couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRU
   result
 }
 #########
+
 
 ## not really async, but whatever.  more like split up into pieces
 couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
@@ -470,6 +471,42 @@ jsondump4 <- function(chunk){
   bulkdocs <- gsub("\\s+"," ",x=bulkdocs,perl=TRUE)
   ## this next is needed again
   bulkdocs <- gsub("[^,{}:]*:\\s*NA\\s*,"," "  ,x=bulkdocs  ,perl=TRUE)
+  bulkdocs
+}
+
+jsondump4 <- function(chunk,bulk=TRUE){
+  colnames <- names(chunk)
+
+  text.cols    <-  grep( pattern="^(_id|ts)$",x=colnames,perl=TRUE)
+  numeric.cols <-  grep( pattern="^(_id|ts)$",x=colnames,perl=TRUE,invert=TRUE)
+
+  ## numeric.cols <- 1:35
+  ## text.cols <- 36:37
+
+  num.data <- apply(chunk[,numeric.cols],1,toJSON)
+  text.data <- list()
+  if(length(text.cols) < 2){
+    text.data <- toJSON(chunk[,text.cols])
+  }else{
+    text.data <- apply(chunk[,text.cols],1,toJSON)
+  }
+  bulkdocs <- gsub('} {',',',x=paste(num.data,text.data,collapse=','),perl=TRUE)
+  if(bulk){  bulkdocs <- paste('{"docs":[',bulkdocs,']}') }
+  ## fix JSON:  too many spaces, NA handled wrong
+  bulkdocs <- gsub("\\s+"," ",x=bulkdocs,perl=TRUE)
+  ## this next is needed again
+  bulkdocs <- gsub("[^,{}:]*:\\s*NA\\s*,"," "  ,x=bulkdocs  ,perl=TRUE)
+  bulkdocs
+}
+
+jsondump5 <- function(chunk){
+  jsonchunk <- toJSON(chunk)
+  bulkdocs <- gsub('} {',',',x=paste(jsonchunk,collapse=','),perl=TRUE)
+  ## fix JSON:  too many spaces, NA handled wrong
+  bulkdocs <- gsub("\\s+"," ",x=bulkdocs,perl=TRUE)
+  ## this next is needed again
+  bulkdocs <- gsub("[^,{}:]*:\\s*NA\\s*,"," "  ,x=bulkdocs  ,perl=TRUE)
+  bulkdocs <- gsub("\\s+NA","null"  ,x=bulkdocs  ,perl=TRUE)
   bulkdocs
 }
 
