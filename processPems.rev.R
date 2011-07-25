@@ -233,13 +233,13 @@ process.pattern.files <- function(year,file.server="http://lysithia.its.uci.edu:
         ## all done, save that state
         couch.save.is.processed(district,year,vds.id, list(processed=step/STEPSIZE))
         gc()
-        if(step == STEPSIZE){
+        ##if(step == STEPSIZE){
           print ('replicate to remote db')
           ## now that local save is done, must replicate to remote
           src <- couch.makedbname.noescape(c(district,year,vds.id))
           tgt <- paste(privcouchdb,couch.makedbname(c(district,year,vds.id)),sep="/");
-          print(paste('## couch.start.replication(',src,',',tgt,")"))
-        }
+          couch.start.replication(src,tgt)
+        ##}
 
         if(rows < 10000){
           couch.save.is.processed(district,year,vds.id, list(processed=1))
@@ -254,61 +254,14 @@ process.pattern.files <- function(year,file.server="http://lysithia.its.uci.edu:
 
 file.server <- "http://lysithia.its.uci.edu:3000"
 vdsservice <- "vdsdata"
-basedir <- paste("D12",c(22,55,5,57,73,91,241,133,605,261,405),sep='/')
-years <- c(2007)
-
-## for(y in years){
-##   for (bd in basedir){
-##     process.yearly.files(y,file.server,vdsservice,bd)
-##   }
-## }
-todo.vdsids =
-  c(
-##     1202921,
-## 1208703,
-## 1208758,
-## 1208809,
-## 1208945,
-## 1209241,
-## 1201853,
-## 1204869,
-## 1203254,
-## 1204211,
-## 1204255,
-## 1204268,
-## 1204279,
-## 1204295,
-## 1204306,
-## 1204328,
-## 1204340,
-## 1204638,
-## 1205088,
-## 1205200,
-## 1205211,
-## 1205262,
-## 1205349,
-## 1205473,
-## 1209424,
-## 1209454,
-## 1210440,
-1210441,
-1210446,
-1210542,
-1210543,
-1210551,
-1210618,
-1210872,
-1210895,
-1210908,
-1210926,
-1212116,
-1201054,
-1201087,
-1201100,
-1201112)
+## basedir <- paste("D12",c(22,55,5,57,73,91,241,133,605,261,405),sep='/')
+years <- c(2007,2008,2009)
 
 year <- years[1]
-patterns <- paste(todo.vdsids,"_ML_",year,".df.*RData$",sep='')
-for(pattern in patterns){
-  process.pattern.files(year,file.server,vdsservice,reconsider=FALSE,pattern=pattern)
-}
+process.pattern.files(year,file.server,vdsservice,reconsider=FALSE)
+
+
+## patterns <- paste(todo.vdsids,"_ML_",year,".df.*RData$",sep='')
+## for(pattern in patterns){
+##   process.pattern.files(year,file.server,vdsservice,reconsider=FALSE,pattern=pattern)
+## }
