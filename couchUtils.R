@@ -249,6 +249,31 @@ couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE,
 
 }
 
+couch.get.processed.state <- function(district,year,vdsid, local=TRUE,  h=getCurlHandle()){
+  
+  statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
+
+  fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
+  ## print(fieldcheck)
+  if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
+    ## not even started yet
+    return (0) 
+  }
+  if(fieldcheck[2] && !fieldcheck[3]) {
+    ## started, but nothing saved
+    return (0) 
+  }
+  if(fieldcheck[2] && fieldcheck[3]) {
+    ## started, something saved
+    return (0) 
+  }
+  if(!fieldcheck[2] && fieldcheck[3]) {
+    ## started, inprocess deleted, something saved
+    return (statusdoc$processed)
+  }
+
+}
+
 
 couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE, h=getCurlHandle()){
 

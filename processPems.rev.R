@@ -86,14 +86,16 @@ couch.daily.doc.save <- function(district,year,vdsid,docdf,local=TRUE){
   docs <- split(docdf,docdf$ymd)
 
   db <- couch.makedbname(c(district,year,vdsid))
-
+  h <- getCurlHandle()
+  couch.session(h)
   for(day in 1:length(docs)){
     ## document id is constructed as vdsid ymd mintime.  for example "1209304 2007-01-01 00:00:00"
     doc <- docs[[day]]
     mints <- doc$ymdtime[1]
     id <- paste(vdsid,format(mints,"%Y-%m-%d %H:%M:%S"))
-    couch.put(db,id,doc[,keepnames],local=local,dumper=jsondump.data)
+    couch.put(db,id,doc[,keepnames],local=local,h=h,dumper=jsondump.data)
   }
+  rm(h,docs)
   gc()
 
 }
@@ -122,12 +124,12 @@ process.pattern.files <- function(year,file.server="http://lysithia.its.uci.edu:
   ## commented out because it is created and I am sick of the error messages
 
   ## # set up replication from remote to local and vice versa
-  ## replicateid <- couch.makedbname(c(district,year))
-  ## local <- couch.makedbname.noescape(c(district,year))
-  ## remote <- paste(couchdb,couch.makedbname(c(district,year)),sep="/")
-  ## print(paste('setting replication between ',remote,'and', local,sep='  '))
-  ## print(couch.start.replication(remote,local,paste(replicateid,'_pull',sep=''),continuous=TRUE))
-  ## print(couch.start.replication(local,remote,paste(replicateid,'_push',sep=''),continuous=TRUE))
+  replicateid <- couch.makedbname(c(district,year))
+  local <- couch.makedbname.noescape(c(district,year))
+  remote <- paste(couchdb,couch.makedbname(c(district,year)),sep="/")
+  print(paste('setting replication between ',remote,'and', local,sep='  '))
+  couch.start.replication(remote,local,paste(replicateid,'_pull',sep=''),continuous=TRUE)
+  couch.start.replication(local,remote,paste(replicateid,'_push',sep=''),continuous=TRUE)
 
   files <- get.filenames(file.server,service,base.dir,pattern)
 
@@ -148,7 +150,10 @@ process.pattern.files <- function(year,file.server="http://lysithia.its.uci.edu:
 
     h=getCurlHandle()
     ## storing state in couchdb
-    if(reconsider || ! couch.check.is.processed(district,year,vds.id,deldb=CLEAN.ON.START,h=h) ){
+    state <- couch.get.processed.state(district,year,vds.id,h=h)
+    print(paste('state is' , state))
+
+    if(reconsider || (state > 0 && state < 1) || ! couch.check.is.processed(district,year,vds.id,deldb=CLEAN.ON.START,h=h) ){
       print (paste('processing',vds.id,year))
 
       ## make sure the filename is in the tracking db, so that it is
@@ -158,15 +163,17 @@ process.pattern.files <- function(year,file.server="http://lysithia.its.uci.edu:
         couch.deletedb(c(district,year,vds.id))
         ## also make sure replication target is not there
         couch.deletedb(c(district,year,vds.id),local=FALSE)
+        state <- 0
       }
-      couch.makedb(c(district,year,vds.id))
+      if(state == 0) couch.makedb(c(district,year,vds.id))
       ## prevent js fixing code from "fixing"
       db <- couch.makedbname(c(district,year,vds.id))
       couch.put(db,'redo',data.frame('redo'=1),h=h)
       couch.put(db,'shrink',data.frame('shrink'=1),h=h)
       rm(h)
       ## split into 4 steps, to reduce total RAM hit per processor core
-      for( step in 1:STEPSIZE ){
+      startstep <- state * STEPSIZE + 1  ## for example, 0.5 * 4 +1 = 3; 0 * 4 + 1 = 1
+      for( step in startstep:STEPSIZE ){
 
         df <- load.remote.file(file.server,service,base.dir,f)
         rows <- nrow(df)
