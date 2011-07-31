@@ -145,8 +145,9 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
   if(length(db)>1){
     db <- couch.makedbname(db)
   }
-  uri=paste(couchdb,db,docname,sep="/");
-  if(local) uri=paste(localcouchdb,db,docname,sep="/");
+  uri <- paste(couchdb,db,docname,sep="/");
+  if(local) uri <- paste(localcouchdb,db,docname,sep="/");
+  uri <- gsub("\\s","%20",x=uri,perl=TRUE)
   fromJSON(getURL(uri)[[1]],curl=h)
 
 }
@@ -201,6 +202,34 @@ couch.delete <- function(db,docname,doc, local=TRUE){
   reader$value()
 }
 
+couch.allDocs <- function(db, query, local=TRUE, h=getCurlHandle()){
+
+  if(length(db)>1){
+    db <- couch.makedbname(db)
+  }
+  cdb <- localcouchdb
+  if(!local){
+    cdb <- couchdb
+  }
+  docname <- '_all_docs'
+  uri <- paste(cdb,db,docname,sep="/");
+
+  q <- paste('"',query,'"',sep='')
+  q <- paste(names(query),q,sep='=',collapse='&')
+  q <- gsub("\\s","%20",x=q,perl=TRUE)
+  q <- gsub('"',"%22",x=q,perl=TRUE)
+  q <- paste(q,'include_docs=true',sep='&')
+  reader <- basicTextGatherer()
+  curlPerform(
+              url = paste(uri,q,sep='?')
+              ,customrequest = "GET"
+              ,httpheader = c('Content-Type'='application/json')
+              ,writefunction = reader$update
+              ,curl=h
+              )
+  fromJSON(reader$value()[[1]])
+}
+
 ## session isn't a json post, so has its own call to curlPerform
 couch.session <- function(h,local=TRUE){
   curlSetOpt(cookiejar='.cookies.txt', curl=h)
@@ -250,22 +279,22 @@ couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE,
 }
 
 couch.get.processed.state <- function(district,year,vdsid, local=TRUE,  h=getCurlHandle()){
-  
+
   statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
 
   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
   ## print(fieldcheck)
   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
     ## not even started yet
-    return (0) 
+    return (0)
   }
   if(fieldcheck[2] && !fieldcheck[3]) {
     ## started, but nothing saved
-    return (0) 
+    return (0)
   }
   if(fieldcheck[2] && fieldcheck[3]) {
     ## started, something saved
-    return (0) 
+    return (0)
   }
   if(!fieldcheck[2] && fieldcheck[3]) {
     ## started, inprocess deleted, something saved
