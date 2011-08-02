@@ -332,7 +332,7 @@ couch.check.state <- function(district,year,vdsid,process, local=TRUE){
     ## either no status doc, or no recorded state for this process, mark as 'todo'
     result <- 'todo'
   }else{
-    result <- statusdoc[process]
+    result <- statusdoc[[process]]
   }
   result
 }
@@ -446,25 +446,28 @@ couch.start.replication <- function(src,tgt,id=NULL,continuous=FALSE){
     }
   }
   print(paste("setting up replication doc:\n",toJSON(doc)))
+  result='ok'
   if(is.null(id)){
     ## no id, use post
-    print(
+    result <-
           couch.post('_replicator'
                ,doc
                ,local=TRUE
                ,h=h
                )
-        )
+
   }else{
-    print(
+    result <-
           couch.put('_replicator'
               ,id
               ,doc
               ,local=TRUE
               ,h=h
               )
-          )
+
   }
+  print (result)
+  result
 }
 
 ## testing two different ways
