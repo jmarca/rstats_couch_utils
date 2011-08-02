@@ -64,7 +64,7 @@ function(txt = character(), max = NA, value = NULL)
   ans
 }
 
-
+dbname <- 'vdsdata'
 couch.makedbname <- function( components ){
   if(!is.null(dbname)){
     components <- c(dbname,components)
@@ -339,24 +339,24 @@ couch.check.state <- function(district,year,vdsid,process, local=TRUE){
 
 couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRUE){
   result <- 'done' ## default to done
-  statusdoc = couch.get(c(district,year),vdsid)
+  statusdoc = couch.get(c(district,year),vdsid,local=local)
   fieldcheck <- c('error',process) %in% names(statusdoc)
   if( (fieldcheck[1] && statusdoc$error == "not_found") ){
     result = 'todo'
     statusdoc = list() ## R doesn't interpolate variables in statements like list(process='state')
     statusdoc[process]='inprocess';
-    putstatus <- fromJSON(couch.put(c(district,year),vdsid,statusdoc))
+    putstatus <- fromJSON(couch.put(c(district,year),vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
-    if(!fieldcheck[1]){
+    if(fieldcheck[1]){
       result <- 'error'
     }
 
   }else if( !fieldcheck[2] ||  statusdoc[process] == 'todo' ){
     result = 'todo'
     statusdoc[process]='inprocess';
-    putstatus <- fromJSON(couch.put(c(district,year),vdsid,statusdoc))
+    putstatus <- fromJSON(couch.put(c(district,year),vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
-    if(!fieldcheck[1]){
+    if(fieldcheck[1]){
       result <- 'error'
     }
   }else{
