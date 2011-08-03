@@ -213,7 +213,7 @@ couch.allDocs <- function(db, query, local=TRUE, h=getCurlHandle()){
   }
   docname <- '_all_docs'
   uri <- paste(cdb,db,docname,sep="/");
-   print(uri)
+##   print(uri)
   q <- paste('"',query,'"',sep='')
   q <- paste(names(query),q,sep='=',collapse='&')
   q <- gsub("\\s","%20",x=q,perl=TRUE)
