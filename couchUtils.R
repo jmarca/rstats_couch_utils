@@ -71,6 +71,7 @@ couch.makedbname <- function( components ){
   }
   tolower(paste(components,collapse='%2F'))
 }
+trackingdb <- couch.makedbname('tracking')
 
 couch.makedbname.noescape <- function( components ){
   if(!is.null(dbname)){
@@ -148,7 +149,7 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
   uri <- paste(couchdb,db,docname,sep="/");
   if(local) uri <- paste(localcouchdb,db,docname,sep="/");
   uri <- gsub("\\s","%20",x=uri,perl=TRUE)
-  fromJSON(getURL(uri)[[1]],curl=h)
+  fromJSON(getURL(uri,curl=h)[[1]])
 
 }
 
@@ -254,117 +255,136 @@ couch.session <- function(h,local=TRUE){
 }
 
 
+## power deprecate!
 
-couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE,  h=getCurlHandle()){
+## couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE,  h=getCurlHandle()){
+##
+##   statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
+##   result <- TRUE ## default to done
+##   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
+##   ## print(fieldcheck)
+##   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
+##     putstatus <- couch.save.is.processed(district,year,vdsid,doc=list('inprocess'=1),h=h)
+##     # print(putstatus)
+##     putstatus <- fromJSON(putstatus)
+##       ##fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
+##     fieldcheck <- c('error') %in% names(putstatus)
+##     if(!fieldcheck[1]){
+##       ## did not get an error on write, so I set 'inprocess'
+##       ## okay, my db, okay to break things
+##       result <- FALSE
+##       if(deldb) couch.deletedb(c(district,year,vdsid))
+##     }
+##   }
+##   result
 
-  statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
-  result <- TRUE ## default to done
-  fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
-  ## print(fieldcheck)
-  if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
-    putstatus <- couch.save.is.processed(district,year,vdsid,doc=list('inprocess'=1),h=h)
-    # print(putstatus)
-    putstatus <- fromJSON(putstatus)
-      ##fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
-    fieldcheck <- c('error') %in% names(putstatus)
-    if(!fieldcheck[1]){
-      ## did not get an error on write, so I set 'inprocess'
-      ## okay, my db, okay to break things
-      result <- FALSE
-      if(deldb) couch.deletedb(c(district,year,vdsid))
-    }
-  }
-  result
+## }
 
-}
+## couch.get.processed.state <- function(district,year,vdsid, local=TRUE,  h=getCurlHandle()){
+##   statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
+##   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
+##   ## print(fieldcheck)
+##   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
+##     ## not even started yet
+##     return (0)
+##   }
+##   if(fieldcheck[2] && !fieldcheck[3]) {
+##     ## started, but nothing saved
+##     return (0)
+##   }
+##   if(fieldcheck[2] && fieldcheck[3]) {
+##     ## started, something saved
+##     return (0)
+##   }
+##   if(!fieldcheck[2] && fieldcheck[3]) {
+##     ## started, inprocess deleted, something saved
+##     return (statusdoc$processed)
+##   }
 
-couch.get.processed.state <- function(district,year,vdsid, local=TRUE,  h=getCurlHandle()){
-
-  statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
-
-  fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
-  ## print(fieldcheck)
-  if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
-    ## not even started yet
-    return (0)
-  }
-  if(fieldcheck[2] && !fieldcheck[3]) {
-    ## started, but nothing saved
-    return (0)
-  }
-  if(fieldcheck[2] && fieldcheck[3]) {
-    ## started, something saved
-    return (0)
-  }
-  if(!fieldcheck[2] && fieldcheck[3]) {
-    ## started, inprocess deleted, something saved
-    return (statusdoc$processed)
-  }
-
-}
+## }
 
 
-couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE, h=getCurlHandle()){
+## couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE, h=getCurlHandle()){
 
-  current = couch.get(c(district,year),vdsid,h=h)
-  curr.names <- names(current)
-  # print(current)
-  if(length(curr.names)>0 && length(current$error)==0 ) {
-    doc.names  <- names(doc)
-    keep.names <- setdiff(curr.names,doc.names)
-    ##    print(paste('current',curr.names,'doc',doc.names,'keep',keep.names))
-    if(length(keep.names)>0) doc[keep.names] = current[keep.names]
-  }
-  ## doc = merge (doc,current)
-  couch.put(c(district,year),vdsid,doc,h=h)
+##   current = couch.get(c(district,year),vdsid,h=h)
+##   curr.names <- names(current)
+##   # print(current)
+##   if(length(curr.names)>0 && length(current$error)==0 ) {
+##     doc.names  <- names(doc)
+##     keep.names <- setdiff(curr.names,doc.names)
+##     ##    print(paste('current',curr.names,'doc',doc.names,'keep',keep.names))
+##     if(length(keep.names)>0) doc[keep.names] = current[keep.names]
+##   }
+##   ## doc = merge (doc,current)
+##   couch.put(c(district,year),vdsid,doc,h=h)
 
-}
+## }
 
 ##################################################
 ## generalization of the above
 ##################################################
+## revised to use multi-year, multi-district tracking db
 couch.check.state <- function(district,year,vdsid,process, local=TRUE){
-  statusdoc = couch.get(c(district,year),vdsid)
+  statusdoc <- couch.get(trackingdb,vdsid,local=local)
   result <- 'error' ## default to error
-  fieldcheck <- c('error',process) %in% names(statusdoc)
+  fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
   if( (fieldcheck[1] && statusdoc$error == "not_found") ||
      !fieldcheck[2] ){
     ## either no status doc, or no recorded state for this process, mark as 'todo'
     result <- 'todo'
   }else{
-    result <- statusdoc[[process]]
+    result <- statusdoc[[paste(year)]][[process]]
   }
   result
 }
 
 couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRUE){
   result <- 'done' ## default to done
-  statusdoc = couch.get(c(district,year),vdsid,local=local)
-  fieldcheck <- c('error',process) %in% names(statusdoc)
+  statusdoc = couch.get(trackingdb,vdsid,local=local)
+  fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
   if( (fieldcheck[1] && statusdoc$error == "not_found") ){
     result = 'todo'
     statusdoc = list() ## R doesn't interpolate variables in statements like list(process='state')
-    statusdoc[process]='inprocess';
-    putstatus <- fromJSON(couch.put(c(district,year),vdsid,statusdoc,local=local))
+    statusdoc[paste(year)]=list()
+    statusdoc[[paste(year)]][[process]]='inprocess'
+    putstatus <- fromJSON(couch.put(trackingdb,vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
     if(fieldcheck[1]){
       result <- 'error'
     }
 
-  }else if( !fieldcheck[2] ||  statusdoc[process] == 'todo' ){
+  }else if( !fieldcheck[2] ||  statusdoc[[paste(year)]][[process]] == 'todo' ){
     result = 'todo'
-    statusdoc[process]='inprocess';
-    putstatus <- fromJSON(couch.put(c(district,year),vdsid,statusdoc,local=local))
+    statusdoc[[paste(year)]][[process]]='inprocess'
+    putstatus <- fromJSON(couch.put(trackingdb,vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
     if(fieldcheck[1]){
       result <- 'error'
     }
   }else{
     ## have status doc, process field, but not in 'todo' state, so report what state it is in
-    result = statusdoc[process]
+    result = statusdoc[[paste(year)]][[process]]
   }
   result
 }
+
+couch.set.state <- function(district,year,vdsid, doc, local=TRUE, h=getCurlHandle()){
+
+  current = couch.get(trackingdb,vdsid,local=local,h=h)
+  doc.names  <- names(doc)
+  if(is.null(current$error)){
+    ## have some data in the tracking db for this doc
+    ## just append/overwrite the state doc information for the given year
+    current[[paste(year)]][doc.names] = doc
+  }else{
+    ## error means there isn't a current document in the db
+    current = list() ## R doesn't interpolate variables in statements like list(process='state')
+    current[[paste(year)]][doc.names] = doc
+  }
+  couch.put(trackingdb,vdsid,current,local=local,h=h)
+
+}
+
 #########
 
 
