@@ -149,7 +149,8 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
   uri <- paste(couchdb,db,docname,sep="/");
   if(local) uri <- paste(localcouchdb,db,docname,sep="/");
   uri <- gsub("\\s","%20",x=uri,perl=TRUE)
-  uri <- gsub(":","%3A",x=uri,perl=TRUE)
+  ## stupid idea!
+  ## uri <- gsub(":","%3A",x=uri,perl=TRUE)
   fromJSON(getURL(uri,curl=h)[[1]])
 
 }
@@ -461,7 +462,7 @@ couch.start.replication <- function(src,tgt,id=NULL,continuous=FALSE){
         )
   if(!is.null(id)){
     current <- couch.get('_replicator',id,local=TRUE,h=h)
-    if(length(current$error) == 0){
+    if(length(grep( pattern="error",x=names(doc),perl=TRUE)) > 0){
       ##doc = merge(doc,current)
       doc['_rev']=current['_rev']
     }
