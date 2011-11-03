@@ -149,6 +149,7 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
   uri <- paste(couchdb,db,docname,sep="/");
   if(local) uri <- paste(localcouchdb,db,docname,sep="/");
   uri <- gsub("\\s","%20",x=uri,perl=TRUE)
+  uri <- gsub(":","%3A",x=uri,perl=TRUE)
   fromJSON(getURL(uri,curl=h)[[1]])
 
 }
