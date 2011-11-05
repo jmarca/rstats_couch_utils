@@ -340,7 +340,7 @@ couch.check.state <- function(district,year,vdsid,process, local=TRUE){
   result
 }
 
-couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRUE){
+couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRUE, force=FALSE){
   result <- 'done' ## default to done
   statusdoc = couch.get(trackingdb,vdsid,local=local)
   fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
@@ -355,7 +355,7 @@ couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRU
       result <- 'error'
     }
 
-  }else if( !fieldcheck[2] ||  statusdoc[[paste(year)]][[process]] == 'todo' ){
+  }else if( !fieldcheck[2] ||  statusdoc[[paste(year)]][[process]] == 'todo' || force ){
     result = 'todo'
     statusdoc[[paste(year)]][[process]]='inprocess'
     putstatus <- fromJSON(couch.put(trackingdb,vdsid,statusdoc,local=local))
