@@ -205,7 +205,7 @@ couch.delete <- function(db,docname,doc, local=TRUE){
   reader$value()
 }
 
-couch.allDocs <- function(db, query, local=TRUE, h=getCurlHandle()){
+couch.allDocs <- function(db, query, view='_all_docs', include.docs = TRUE, local=TRUE, h=getCurlHandle()){
 
   if(length(db)>1){
     db <- couch.makedbname(db)
@@ -214,14 +214,18 @@ couch.allDocs <- function(db, query, local=TRUE, h=getCurlHandle()){
   if(!local){
     cdb <- couchdb
   }
-  docname <- '_all_docs'
-  uri <- paste(cdb,db,docname,sep="/");
+  ## docname <- '_all_docs'
+  uri <- paste(cdb,db,view,sep="/");
 ##   print(uri)
   q <- paste('"',query,'"',sep='')
   q <- paste(names(query),q,sep='=',collapse='&')
   q <- gsub("\\s","%20",x=q,perl=TRUE)
   q <- gsub('"',"%22",x=q,perl=TRUE)
-  q <- paste(q,'include_docs=true',sep='&')
+  if(include.docs){
+    q <- paste(q,'include_docs=true',sep='&')
+  ## }else{
+  ##   q <- paste(q,sep='&')
+  }
   reader <- basicTextGatherer()
   curlPerform(
               url = paste(uri,q,sep='?')
