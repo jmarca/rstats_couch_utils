@@ -217,8 +217,7 @@ couch.allDocs <- function(db, query, view='_all_docs', include.docs = TRUE, loca
   ## docname <- '_all_docs'
   uri <- paste(cdb,db,view,sep="/");
 ##   print(uri)
-  q <- paste('"',query,'"',sep='')
-  q <- paste(names(query),q,sep='=',collapse='&')
+  q <- paste(names(query),query,sep='=',collapse='&')
   q <- gsub("\\s","%20",x=q,perl=TRUE)
   q <- gsub('"',"%22",x=q,perl=TRUE)
   if(include.docs){
@@ -226,6 +225,7 @@ couch.allDocs <- function(db, query, view='_all_docs', include.docs = TRUE, loca
   ## }else{
   ##   q <- paste(q,sep='&')
   }
+  print (q)
   reader <- basicTextGatherer()
   curlPerform(
               url = paste(uri,q,sep='?')
