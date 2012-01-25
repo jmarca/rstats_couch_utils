@@ -167,7 +167,7 @@ couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle(),
   uri=paste(cdb,db,docname,sep="/");
   uri=gsub("\\s","%20",x=uri,perl=TRUE)
   if(priv){
-    couch.session(h)
+    couch.session(h,local)
   }
 
   reader = basicTextGatherer()
@@ -260,86 +260,21 @@ couch.session <- function(h,local=TRUE){
   reader$value()
 }
 
-
-## power deprecate!
-
-## couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE,  h=getCurlHandle()){
-##
-##   statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
-##   result <- TRUE ## default to done
-##   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
-##   ## print(fieldcheck)
-##   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
-##     putstatus <- couch.save.is.processed(district,year,vdsid,doc=list('inprocess'=1),h=h)
-##     # print(putstatus)
-##     putstatus <- fromJSON(putstatus)
-##       ##fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
-##     fieldcheck <- c('error') %in% names(putstatus)
-##     if(!fieldcheck[1]){
-##       ## did not get an error on write, so I set 'inprocess'
-##       ## okay, my db, okay to break things
-##       result <- FALSE
-##       if(deldb) couch.deletedb(c(district,year,vdsid))
-##     }
-##   }
-##   result
-
-## }
-
-## couch.get.processed.state <- function(district,year,vdsid, local=TRUE,  h=getCurlHandle()){
-##   statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
-##   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
-##   ## print(fieldcheck)
-##   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
-##     ## not even started yet
-##     return (0)
-##   }
-##   if(fieldcheck[2] && !fieldcheck[3]) {
-##     ## started, but nothing saved
-##     return (0)
-##   }
-##   if(fieldcheck[2] && fieldcheck[3]) {
-##     ## started, something saved
-##     return (0)
-##   }
-##   if(!fieldcheck[2] && fieldcheck[3]) {
-##     ## started, inprocess deleted, something saved
-##     return (statusdoc$processed)
-##   }
-
-## }
-
-
-## couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE, h=getCurlHandle()){
-
-##   current = couch.get(c(district,year),vdsid,h=h)
-##   curr.names <- names(current)
-##   # print(current)
-##   if(length(curr.names)>0 && length(current$error)==0 ) {
-##     doc.names  <- names(doc)
-##     keep.names <- setdiff(curr.names,doc.names)
-##     ##    print(paste('current',curr.names,'doc',doc.names,'keep',keep.names))
-##     if(length(keep.names)>0) doc[keep.names] = current[keep.names]
-##   }
-##   ## doc = merge (doc,current)
-##   couch.put(c(district,year),vdsid,doc,h=h)
-
-## }
-
-##################################################
-## generalization of the above
 ##################################################
 ## revised to use multi-year, multi-district tracking db
-couch.check.state <- function(district,year,vdsid,process, local=TRUE){
+couch.check.state <- function(year,vdsid,process, local=TRUE){
   statusdoc <- couch.get(trackingdb,vdsid,local=local)
   result <- 'error' ## default to error
-  fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
-  if( (fieldcheck[1] && statusdoc$error == "not_found") ||
-     !fieldcheck[2] ){
-    ## either no status doc, or no recorded state for this process, mark as 'todo'
+  if( statusdoc['error'] == "not_found"){
     result <- 'todo'
   }else{
-    result <- statusdoc[[paste(year)]][[process]]
+    fieldcheck <- c(process) %in% names(statusdoc[[paste(year)]])
+    if(!fieldcheck[1] ){
+      result <- 'todo'
+    }else{
+      ## either no status doc, or no recorded state for this process, mark as 'todo'
+      result <- statusdoc[[paste(year)]][[process]]
+    }
   }
   result
 }
@@ -348,7 +283,7 @@ couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRU
   result <- 'done' ## default to done
   statusdoc = couch.get(trackingdb,vdsid,local=local)
   fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
-  if( (fieldcheck[1] && statusdoc$error == "not_found") ){
+  if( (fieldcheck[1] && statusdoc['error'] == "not_found") ){
     result = 'todo'
     statusdoc = list() ## R doesn't interpolate variables in statements like list(process='state')
     statusdoc[paste(year)]=list()
@@ -374,11 +309,11 @@ couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRU
   result
 }
 
-couch.set.state <- function(district,year,vdsid, doc, local=TRUE, h=getCurlHandle()){
+couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()){
 
-  current = couch.get(trackingdb,vdsid,local=local,h=h)
+  current = couch.get(trackingdb,detector.id,local=local,h=h)
   doc.names  <- names(doc)
-  if(is.null(current$error)){
+  if(is.null(current[['error']])){
     ## have some data in the tracking db for this doc
     ## just append/overwrite the state doc information for the given year
     current[[paste(year)]][doc.names] = doc
@@ -387,7 +322,7 @@ couch.set.state <- function(district,year,vdsid, doc, local=TRUE, h=getCurlHandl
     current = list() ## R doesn't interpolate variables in statements like list(process='state')
     current[[paste(year)]][doc.names] = doc
   }
-  couch.put(trackingdb,vdsid,current,local=local,h=h)
+  couch.put(trackingdb,detector.id,current,local=local,h=h)
 
 }
 
@@ -594,3 +529,66 @@ jsondump5 <- function(chunk){
 }
 
 
+## PUT somedatabase/document/attachment?rev=123 HTTP/1.0
+## Content-Length: 245
+## Content-Type: image/jpeg
+## <JPEG data>
+##################################################
+## PUT /test_suite_db/multipart HTTP/1.1
+## Content-Type: multipart/related;boundary="abc123"
+
+## --abc123
+## content-type: application/json
+
+## {"body":"This is a body.",
+## "_attachments":{
+##   "foo.txt": {
+##     "follows":true,
+##     "content_type":"text/plain",
+##     "length":21
+##     },
+##   "bar.txt": {
+##     "follows":true,
+##     "content_type":"text/plain",
+##     "length":20
+##     },
+##   }
+## }
+
+## --abc123
+
+## this is 21 chars long
+## --abc123
+
+## this is 20 chars lon
+## --abc123--
+
+couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHandle()){
+
+  current = couch.get(db,docname,local=local,h=h)
+  revision <- paste('rev',current$'_rev',sep='=')
+
+  cdb <- localcouchdb
+  if(!local){
+    cdb <- couchdb
+  }
+
+  file.path <- unlist(strsplit(attfile,"/"))
+  flen <- length(file.path)
+  filename <- file.path[flen]
+
+  uri=paste(cdb,db,docname,filename,sep="/");
+  uri=gsub("\\s","%20",x=uri,perl=TRUE)
+  uri <- paste(uri,revision,sep='?')
+  if(priv){
+    couch.session(h,local)
+  }
+
+  content.type <- guessMIMEType(attfile, "application/x-binary")
+
+  print(paste('putting attachment',uri))
+  ## have to wait, in case there are other docs to attach
+  ## until I figure out how to multiple at a time deal thingee
+  system2('curl',paste('-X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE )
+  print('done')
+}
