@@ -151,7 +151,7 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
   uri <- gsub("\\s","%20",x=uri,perl=TRUE)
   ## stupid idea!
   ## uri <- gsub(":","%3A",x=uri,perl=TRUE)
-  fromJSON(getURL(uri,curl=h)[[1]])
+  fromJSON(getURL(uri,curl=h)[[1]],simplify=FALSE)
 
 }
 
@@ -313,13 +313,14 @@ couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()
 
   current = couch.get(trackingdb,detector.id,local=local,h=h)
   doc.names  <- names(doc)
-  if(is.null(current[['error']])){
-    ## have some data in the tracking db for this doc
-    ## just append/overwrite the state doc information for the given year
-    current[[paste(year)]][doc.names] = doc
-  }else{
+  current.names <- names(current)
+  if('error' %in% current.names){
     ## error means there isn't a current document in the db
     current = list() ## R doesn't interpolate variables in statements like list(process='state')
+    current[[paste(year)]][doc.names] = doc
+  }else{
+    ## have some data in the tracking db for this doc
+    ## just append/overwrite the state doc information for the given year
     current[[paste(year)]][doc.names] = doc
   }
   couch.put(trackingdb,detector.id,current,local=local,h=h)
@@ -566,7 +567,7 @@ jsondump5 <- function(chunk){
 couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHandle()){
 
   current = couch.get(db,docname,local=local,h=h)
-  revision <- paste('rev',current$'_rev',sep='=')
+  revision <- paste('rev',current['_rev'],sep='=')
 
   cdb <- localcouchdb
   if(!local){
@@ -589,6 +590,6 @@ couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHa
   print(paste('putting attachment',uri))
   ## have to wait, in case there are other docs to attach
   ## until I figure out how to multiple at a time deal thingee
-  system2('curl',paste('-X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE )
+  system2('curl',paste(' -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE )
   print('done')
 }
