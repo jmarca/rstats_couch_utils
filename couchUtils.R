@@ -225,7 +225,7 @@ couch.allDocs <- function(db, query, view='_all_docs', include.docs = TRUE, loca
   ## }else{
   ##   q <- paste(q,sep='&')
   }
-  print (q)
+  print (paste(uri,q,sep='?'))
   reader <- basicTextGatherer()
   curlPerform(
               url = paste(uri,q,sep='?')
@@ -234,7 +234,7 @@ couch.allDocs <- function(db, query, view='_all_docs', include.docs = TRUE, loca
               ,writefunction = reader$update
               ,curl=h
               )
-  fromJSON(reader$value()[[1]])
+  fromJSON(reader$value()[[1]],simplify=FALSE)
 }
 
 ## session isn't a json post, so has its own call to curlPerform
@@ -265,21 +265,22 @@ couch.session <- function(h,local=TRUE){
 couch.check.state <- function(year,vdsid,process, local=TRUE){
   statusdoc <- couch.get(trackingdb,vdsid,local=local)
   result <- 'error' ## default to error
-  if( statusdoc['error'] == "not_found"){
+  current.names <- names(statusdoc)
+  if('error' %in% current.names){
     result <- 'todo'
   }else{
     fieldcheck <- c(process) %in% names(statusdoc[[paste(year)]])
     if(!fieldcheck[1] ){
+      ## either no status doc, or no recorded state for this process, mark as 'todo'
       result <- 'todo'
     }else{
-      ## either no status doc, or no recorded state for this process, mark as 'todo'
       result <- statusdoc[[paste(year)]][[process]]
     }
   }
   result
 }
 
-couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRUE, force=FALSE){
+couch.checkout.for.processing <- function(district,year,vdsid,process,state='inprocess', local=TRUE, force=FALSE){
   result <- 'done' ## default to done
   statusdoc = couch.get(trackingdb,vdsid,local=local)
   fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
@@ -287,7 +288,7 @@ couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRU
     result = 'todo'
     statusdoc = list() ## R doesn't interpolate variables in statements like list(process='state')
     statusdoc[paste(year)]=list()
-    statusdoc[[paste(year)]][[process]]='inprocess'
+    statusdoc[[paste(year)]][[process]]=state
     putstatus <- fromJSON(couch.put(trackingdb,vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
     if(fieldcheck[1]){
@@ -296,7 +297,7 @@ couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRU
 
   }else if( !fieldcheck[2] ||  statusdoc[[paste(year)]][[process]] == 'todo' || force ){
     result = 'todo'
-    statusdoc[[paste(year)]][[process]]='inprocess'
+    statusdoc[[paste(year)]][[process]]=state
     putstatus <- fromJSON(couch.put(trackingdb,vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
     if(fieldcheck[1]){
@@ -593,3 +594,25 @@ couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHa
   system2('curl',paste(' -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE )
   print('done')
 }
+
+couch.get.attachment <- function(db,docname,attfile, local=TRUE, h=getCurlHandle()){
+
+  cdb <- localcouchdb
+  if(!local){
+    cdb <- couchdb
+  }
+
+  uri=paste(cdb,db,docname,attfile,sep="/");
+  uri=gsub("\\s","%20",x=uri,perl=TRUE)
+  if(priv){
+    couch.session(h,local)
+  }
+
+  print(paste('getting attachment',uri))
+    tmp <- tempfile('remotedata')
+
+  system2('curl',uri,stdout=tmp,stderr=FALSE)
+  tmp
+
+}
+
