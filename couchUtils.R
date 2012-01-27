@@ -588,31 +588,24 @@ couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHa
 
   content.type <- guessMIMEType(attfile, "application/x-binary")
 
-  print(paste('putting attachment',uri))
+  print(paste('putting attachment'))
+  print(paste('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep='')))
   ## have to wait, in case there are other docs to attach
   ## until I figure out how to multiple at a time deal thingee
-  system2('curl',paste(' -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE )
+  system2('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE )
   print('done')
 }
 
-couch.get.attachment <- function(db,docname,attfile, local=TRUE, h=getCurlHandle()){
-
+couch.get.attachment <- function(db,docname,attfile, local=TRUE){##, h=getCurlHandle()){
   cdb <- localcouchdb
   if(!local){
     cdb <- couchdb
   }
-
   uri=paste(cdb,db,docname,attfile,sep="/");
   uri=gsub("\\s","%20",x=uri,perl=TRUE)
-  if(priv){
-    couch.session(h,local)
-  }
-
+  tmp <- tempfile('remotedata')
   print(paste('getting attachment',uri))
-    tmp <- tempfile('remotedata')
-
-  system2('curl',uri,stdout=tmp,stderr=FALSE)
-  tmp
-
+  system2('curl',paste('-v',uri),stdout=tmp)
+  return (tmp)
 }
 
