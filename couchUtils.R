@@ -565,7 +565,7 @@ jsondump5 <- function(chunk){
 ## this is 20 chars lon
 ## --abc123--
 
-couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHandle()){
+couch.attach <- function(db=trackingdb,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHandle()){
 
   current = couch.get(db,docname,local=local,h=h)
   revision <- paste('rev',current['_rev'],sep='=')
@@ -596,16 +596,22 @@ couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHa
   print('done')
 }
 
-couch.get.attachment <- function(db,docname,attfile, local=TRUE){##, h=getCurlHandle()){
+couch.get.attachment <- function(db=trackingdb,docname,attachment, local=TRUE){##, h=getCurlHandle()){
   cdb <- localcouchdb
   if(!local){
     cdb <- couchdb
   }
-  uri=paste(cdb,db,docname,attfile,sep="/");
+  uri=paste(cdb,db,docname,attachment,sep="/");
   uri=gsub("\\s","%20",x=uri,perl=TRUE)
   tmp <- tempfile('remotedata')
   print(paste('getting attachment',uri))
   system2('curl',paste('-v',uri),stdout=tmp)
   return (tmp)
+}
+
+couch.has.attachment <- function(db=trackingdb,docname,attachment,local=TRUE){
+  r <- couch.get(db,docname)
+  attachments <- r[['_attachments']]
+  attachment %in% names(attachments)
 }
 
