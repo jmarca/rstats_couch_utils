@@ -592,7 +592,7 @@ couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHa
   print(paste('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep='')))
   ## have to wait, in case there are other docs to attach
   ## until I figure out how to multiple at a time deal thingee
-  system2('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE )
+  print(system2('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE ,stdout=TRUE,stderr=TRUE))
   print('done')
 }
 
