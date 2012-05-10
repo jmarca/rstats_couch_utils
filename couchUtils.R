@@ -589,11 +589,19 @@ couch.attach <- function(db=trackingdb,docname,attfile, local=TRUE, priv=FALSE, 
   content.type <- guessMIMEType(attfile, "application/x-binary")
 
   print(paste('putting attachment'))
-  print(paste('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep='')))
+  putting.command <- paste('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''))
   ## have to wait, in case there are other docs to attach
   ## until I figure out how to multiple at a time deal thingee
-  print(system2('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE ,stdout=TRUE,stderr=TRUE))
-  print('done')
+    r <- try(
+             print(system2('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE ,stdout=TRUE,stderr=TRUE))
+             )
+    if(class(r) == "try-error") {
+      print('doit later')
+      ## make a note of it
+      cat(paste('couch.attach failed:',putting.command ),file='failedcurl.log',append=TRUE)
+    }else{
+      print('success')
+    }
 }
 
 couch.get.attachment <- function(db=trackingdb,docname,attachment, local=TRUE){##, h=getCurlHandle()){
