@@ -3,6 +3,7 @@
 ## and also the target of all replication calls
 ## local is where to send bulk saves,
 ## and the source of replication calls
+
 couchenv = Sys.getenv(c(
   "COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS", "COUCHDB_PORT"
   , "COUCHDB_LOCALHOST", "COUCHDB_LOCALUSER", "COUCHDB_LOCALPASS", "COUCHDB_LOCALPORT"))
@@ -154,6 +155,25 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
   fromJSON(getURL(uri,curl=h)[[1]],simplify=FALSE)
 
 }
+
+## # Pointer to your couchbase view base.  This is where you find your
+## # own data
+## urlBase <- 'http://couchbase.example.com/sfpd'
+
+## # This is your basic GET request -> parsed JSON.
+## getData <- function(subpath) {
+##   fromJSON(file=paste(urlBase, subpath, sep=''))$rows
+## }
+
+## # And this flattens it into a data frame, optionaly naming the
+## # columns.
+## getFlatData <- function(sub, n=NULL) {
+##   b <- plyr::ldply(getData(sub), unlist)
+##   if (!is.null(n)) {
+##     names(b) <- n
+##   }
+##   b
+## }
 
 couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle(),dumper=jsondump5){
 
@@ -622,4 +642,3 @@ couch.has.attachment <- function(db=trackingdb,docname,attachment,local=TRUE){
   attachments <- r[['_attachments']]
   attachment %in% names(attachments)
 }
-
