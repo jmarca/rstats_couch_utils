@@ -618,7 +618,7 @@ couch.attach <- function(db=trackingdb,docname,attfile, local=TRUE, priv=FALSE, 
     if(class(r) == "try-error") {
       print('doit later')
       ## make a note of it
-      cat(paste('couch.attach failed:',putting.command ),file='failedcurl.log',append=TRUE)
+      cat(paste('couch.attach failed:',putting.command,'\n' ),file='failedcurl.log',append=TRUE)
     }else{
       print('success')
     }
