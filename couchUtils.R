@@ -7,6 +7,10 @@ couchenv = Sys.getenv(c(
   "COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS", "COUCHDB_PORT"
   , "COUCHDB_LOCALHOST", "COUCHDB_LOCALUSER", "COUCHDB_LOCALPASS", "COUCHDB_LOCALPORT"))
 
+if(couchenv[5]=="") couchenv[5]=couchenv[1]
+if(couchenv[6]=="") couchenv[6]=couchenv[2]
+if(couchenv[7]=="") couchenv[7]=couchenv[3]
+if(couchenv[8]=="") couchenv[8]=5985
 couchdb = paste("http://",couchenv[1],":",couchenv[4],sep='')
 privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":",couchenv[4],sep='')
 localcouchdb = paste("http://",couchenv[5],":",couchenv[8],sep='')
@@ -151,6 +155,7 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
   uri <- gsub("\\s","%20",x=uri,perl=TRUE)
   ## stupid idea!
   ## uri <- gsub(":","%3A",x=uri,perl=TRUE)
+  ## print(uri)
   fromJSON(getURL(uri,curl=h)[[1]],simplify=FALSE)
 
 }
