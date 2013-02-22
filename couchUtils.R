@@ -3,6 +3,7 @@
 ## and also the target of all replication calls
 ## local is where to send bulk saves,
 ## and the source of replication calls
+
 couchenv = Sys.getenv(c(
   "COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS", "COUCHDB_PORT"
   , "COUCHDB_LOCALHOST", "COUCHDB_LOCALUSER", "COUCHDB_LOCALPASS", "COUCHDB_LOCALPORT"))
@@ -159,6 +160,25 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
   fromJSON(getURL(uri,curl=h)[[1]],simplify=FALSE)
 
 }
+
+## # Pointer to your couchbase view base.  This is where you find your
+## # own data
+## urlBase <- 'http://couchbase.example.com/sfpd'
+
+## # This is your basic GET request -> parsed JSON.
+## getData <- function(subpath) {
+##   fromJSON(file=paste(urlBase, subpath, sep=''))$rows
+## }
+
+## # And this flattens it into a data frame, optionaly naming the
+## # columns.
+## getFlatData <- function(sub, n=NULL) {
+##   b <- plyr::ldply(getData(sub), unlist)
+##   if (!is.null(n)) {
+##     names(b) <- n
+##   }
+##   b
+## }
 
 couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle(),dumper=jsondump5){
 
@@ -570,7 +590,7 @@ jsondump5 <- function(chunk){
 ## this is 20 chars lon
 ## --abc123--
 
-couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHandle()){
+couch.attach <- function(db=trackingdb,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHandle()){
 
   current = couch.get(db,docname,local=local,h=h)
   revision <- paste('rev',current['_rev'],sep='=')
@@ -594,19 +614,27 @@ couch.attach <- function(db,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHa
   content.type <- guessMIMEType(attfile, "application/x-binary")
 
   print(paste('putting attachment'))
-  print(paste('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep='')))
+  putting.command <- paste('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''))
   ## have to wait, in case there are other docs to attach
   ## until I figure out how to multiple at a time deal thingee
-  system2('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE )
-  print('done')
+    r <- try(
+             print(system2('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE ,stdout=TRUE,stderr=TRUE))
+             )
+    if(class(r) == "try-error") {
+      print('doit later')
+      ## make a note of it
+      cat(paste('couch.attach failed:',putting.command,'\n' ),file='failedcurl.log',append=TRUE)
+    }else{
+      print('success')
+    }
 }
 
-couch.get.attachment <- function(db,docname,attfile, local=TRUE){##, h=getCurlHandle()){
+couch.get.attachment <- function(db=trackingdb,docname,attachment, local=TRUE){##, h=getCurlHandle()){
   cdb <- localcouchdb
   if(!local){
     cdb <- couchdb
   }
-  uri=paste(cdb,db,docname,attfile,sep="/");
+  uri=paste(cdb,db,docname,attachment,sep="/");
   uri=gsub("\\s","%20",x=uri,perl=TRUE)
   tmp <- tempfile('remotedata')
   print(paste('getting attachment',uri))
@@ -614,3 +642,8 @@ couch.get.attachment <- function(db,docname,attfile, local=TRUE){##, h=getCurlHa
   return (tmp)
 }
 
+couch.has.attachment <- function(db=trackingdb,docname,attachment,local=TRUE){
+  r <- couch.get(db,docname)
+  attachments <- r[['_attachments']]
+  attachment %in% names(attachments)
+}
