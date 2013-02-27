@@ -357,12 +357,12 @@ couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()
 
 
 ## not really async, but whatever.  more like split up into pieces
-couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
+couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE, chunksize=1000){
 
   ## here I assume that docdf is a datafame
 
-  ## push 10000 at a time
-  i <- 1000
+  ## push 1000 at a time
+  i <- chunksize
   maxi <- length(docdf[,1])
   if(i > maxi ) i <- maxi
 
