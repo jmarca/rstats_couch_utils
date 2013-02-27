@@ -355,10 +355,7 @@ couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()
 
 #########
 
-
-## not really async, but whatever.  more like split up into pieces
-couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE, chunksize=1000){
-
+couch.bulk.docs.save <- function(dbname,docdf,local=TRUE,chunksize=1000){
   ## here I assume that docdf is a datafame
 
   ## push 1000 at a time
@@ -368,9 +365,6 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE, ch
 
   j <- 1
 
-  db <- couch.makedbname(c(district,year,vdsid))
-
-  couch.makedb(c(district,year,vdsid))
 
   ## the bulk docs target
   uri=paste(couchdb,db,'_bulk_docs',sep="/")
@@ -414,6 +408,15 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE, ch
 
   }
   gc()
+  
+}
+## not really async, but whatever.  more like split up into pieces
+couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE, chunksize=1000){
+
+  db <- couch.makedbname(c(district,year,vdsid))
+
+  couch.makedb(c(district,year,vdsid))
+  couch.bulk.docs.save(dbname=db,docdf=docdf,local=local,chunksize=chunksize)
 
 }
 
