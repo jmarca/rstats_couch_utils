@@ -355,7 +355,7 @@ couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()
 
 #########
 
-couch.bulk.docs.save <- function(dbname,docdf,local=TRUE,chunksize=1000){
+couch.bulk.docs.save <- function(dbname,docdf,local=TRUE,chunksize=1000,makeJSON=jsondump4){
   ## here I assume that docdf is a datafame
 
   ## push 1000 at a time
@@ -381,7 +381,7 @@ couch.bulk.docs.save <- function(dbname,docdf,local=TRUE,chunksize=1000){
     }
     ## for next iteration
     if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
-    bulkdocs <- jsondump4(chunk)
+    bulkdocs <- makeJSON(chunk)
     h = getCurlHandle()
     curlresult <- try( curlPerform(
                                    url = uri
