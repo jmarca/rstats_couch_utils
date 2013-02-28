@@ -88,7 +88,7 @@ couch.makedbname.noescape <- function( components ){
 
 couch.makedb <- function( db, local=TRUE ){
 
-  if(length(db)>0){
+  if(length(db)>1){
     db <- couch.makedbname(db)
   }
   # print(paste('making db',db))
@@ -109,7 +109,7 @@ couch.makedb <- function( db, local=TRUE ){
 
 couch.deletedb <- function(db, local=TRUE){
 
-  if(length(db)>0){
+  if(length(db)>1){
     db <- couch.makedbname(db)
   }
 
@@ -211,7 +211,7 @@ couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle(),
 
 couch.delete <- function(db,docname,doc, local=TRUE){
 
-  if(length(db)>0){
+  if(length(db)>1){
     db <- couch.makedbname(db)
   }
 
@@ -355,8 +355,9 @@ couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()
 
 #########
 
-couch.bulk.docs.save <- function(dbname,docdf,local=TRUE,chunksize=1000,makeJSON=jsondump4){
+couch.bulk.docs.save <- function(db,docdf,local=TRUE,chunksize=1000,makeJSON=jsondump4){
   ## here I assume that docdf is a datafame
+  couch.makedb(db)
 
   ## push 1000 at a time
   i <- chunksize
@@ -415,8 +416,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE, ch
 
   db <- couch.makedbname(c(district,year,vdsid))
 
-  couch.makedb(c(district,year,vdsid))
-  couch.bulk.docs.save(dbname=db,docdf=docdf,local=local,chunksize=chunksize)
+  couch.bulk.docs.save(db=db,docdf=docdf,local=local,chunksize=chunksize)
 
 }
 
