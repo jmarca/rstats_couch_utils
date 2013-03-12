@@ -357,7 +357,7 @@ couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()
 
 couch.bulk.docs.save <- function(db,docdf,local=TRUE,chunksize=1000,makeJSON=jsondump4){
   ## here I assume that docdf is a datafame
-  couch.makedb(db)
+  ## couch.makedb(db)
 
   ## push 1000 at a time
   i <- chunksize
@@ -406,11 +406,11 @@ couch.bulk.docs.save <- function(db,docdf,local=TRUE,chunksize=1000,makeJSON=jso
                   ,curl = h
                   )
     }
-
   }
   gc()
-  
+  1
 }
+
 ## not really async, but whatever.  more like split up into pieces
 couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE, chunksize=1000){
 
