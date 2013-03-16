@@ -3,10 +3,15 @@
 ## and also the target of all replication calls
 ## local is where to send bulk saves,
 ## and the source of replication calls
+
 couchenv = Sys.getenv(c(
   "COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS", "COUCHDB_PORT"
   , "COUCHDB_LOCALHOST", "COUCHDB_LOCALUSER", "COUCHDB_LOCALPASS", "COUCHDB_LOCALPORT"))
 
+if(couchenv[5]=="") couchenv[5]=couchenv[1]
+if(couchenv[6]=="") couchenv[6]=couchenv[2]
+if(couchenv[7]=="") couchenv[7]=couchenv[3]
+if(couchenv[8]=="") couchenv[8]=5985
 couchdb = paste("http://",couchenv[1],":",couchenv[4],sep='')
 privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":",couchenv[4],sep='')
 localcouchdb = paste("http://",couchenv[5],":",couchenv[8],sep='')
@@ -83,7 +88,7 @@ couch.makedbname.noescape <- function( components ){
 
 couch.makedb <- function( db, local=TRUE ){
 
-  if(length(db)>0){
+  if(length(db)>1){
     db <- couch.makedbname(db)
   }
   # print(paste('making db',db))
@@ -104,7 +109,7 @@ couch.makedb <- function( db, local=TRUE ){
 
 couch.deletedb <- function(db, local=TRUE){
 
-  if(length(db)>0){
+  if(length(db)>1){
     db <- couch.makedbname(db)
   }
 
@@ -149,9 +154,31 @@ couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
   uri <- paste(couchdb,db,docname,sep="/");
   if(local) uri <- paste(localcouchdb,db,docname,sep="/");
   uri <- gsub("\\s","%20",x=uri,perl=TRUE)
-  fromJSON(getURL(uri,curl=h)[[1]])
+  ## stupid idea!
+  ## uri <- gsub(":","%3A",x=uri,perl=TRUE)
+  ## print(uri)
+  fromJSON(getURL(uri,curl=h)[[1]],simplify=FALSE)
 
 }
+
+## # Pointer to your couchbase view base.  This is where you find your
+## # own data
+## urlBase <- 'http://couchbase.example.com/sfpd'
+
+## # This is your basic GET request -> parsed JSON.
+## getData <- function(subpath) {
+##   fromJSON(file=paste(urlBase, subpath, sep=''))$rows
+## }
+
+## # And this flattens it into a data frame, optionaly naming the
+## # columns.
+## getFlatData <- function(sub, n=NULL) {
+##   b <- plyr::ldply(getData(sub), unlist)
+##   if (!is.null(n)) {
+##     names(b) <- n
+##   }
+##   b
+## }
 
 couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle(),dumper=jsondump5){
 
@@ -165,7 +192,7 @@ couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle(),
   uri=paste(cdb,db,docname,sep="/");
   uri=gsub("\\s","%20",x=uri,perl=TRUE)
   if(priv){
-    couch.session(h)
+    couch.session(h,local)
   }
 
   reader = basicTextGatherer()
@@ -184,7 +211,7 @@ couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle(),
 
 couch.delete <- function(db,docname,doc, local=TRUE){
 
-  if(length(db)>0){
+  if(length(db)>1){
     db <- couch.makedbname(db)
   }
 
@@ -203,7 +230,7 @@ couch.delete <- function(db,docname,doc, local=TRUE){
   reader$value()
 }
 
-couch.allDocs <- function(db, query, local=TRUE, h=getCurlHandle()){
+couch.allDocs <- function(db, query, view='_all_docs', include.docs = TRUE, local=TRUE, h=getCurlHandle()){
 
   if(length(db)>1){
     db <- couch.makedbname(db)
@@ -212,14 +239,18 @@ couch.allDocs <- function(db, query, local=TRUE, h=getCurlHandle()){
   if(!local){
     cdb <- couchdb
   }
-  docname <- '_all_docs'
-  uri <- paste(cdb,db,docname,sep="/");
+  ## docname <- '_all_docs'
+  uri <- paste(cdb,db,view,sep="/");
 ##   print(uri)
-  q <- paste('"',query,'"',sep='')
-  q <- paste(names(query),q,sep='=',collapse='&')
+  q <- paste(names(query),query,sep='=',collapse='&')
   q <- gsub("\\s","%20",x=q,perl=TRUE)
   q <- gsub('"',"%22",x=q,perl=TRUE)
-  q <- paste(q,'include_docs=true',sep='&')
+  if(include.docs){
+    q <- paste(q,'include_docs=true',sep='&')
+  ## }else{
+  ##   q <- paste(q,sep='&')
+  }
+  print (paste(uri,q,sep='?'))
   reader <- basicTextGatherer()
   curlPerform(
               url = paste(uri,q,sep='?')
@@ -228,7 +259,7 @@ couch.allDocs <- function(db, query, local=TRUE, h=getCurlHandle()){
               ,writefunction = reader$update
               ,curl=h
               )
-  fromJSON(reader$value()[[1]])
+  fromJSON(reader$value()[[1]],simplify=FALSE)
 }
 
 ## session isn't a json post, so has its own call to curlPerform
@@ -254,108 +285,44 @@ couch.session <- function(h,local=TRUE){
   reader$value()
 }
 
-
-## power deprecate!
-
-## couch.check.is.processed <- function(district,year,vdsid,deldb=TRUE, local=TRUE,  h=getCurlHandle()){
-##
-##   statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
-##   result <- TRUE ## default to done
-##   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
-##   ## print(fieldcheck)
-##   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
-##     putstatus <- couch.save.is.processed(district,year,vdsid,doc=list('inprocess'=1),h=h)
-##     # print(putstatus)
-##     putstatus <- fromJSON(putstatus)
-##       ##fromJSON(couch.put(c(district,year),vdsid,list('inprocess'=1)))
-##     fieldcheck <- c('error') %in% names(putstatus)
-##     if(!fieldcheck[1]){
-##       ## did not get an error on write, so I set 'inprocess'
-##       ## okay, my db, okay to break things
-##       result <- FALSE
-##       if(deldb) couch.deletedb(c(district,year,vdsid))
-##     }
-##   }
-##   result
-
-## }
-
-## couch.get.processed.state <- function(district,year,vdsid, local=TRUE,  h=getCurlHandle()){
-##   statusdoc = couch.get(c(district,year),vdsid,local=local,h=h)
-##   fieldcheck <- c('error','inprocess','processed') %in% names(statusdoc)
-##   ## print(fieldcheck)
-##   if(fieldcheck[1] || ( !fieldcheck[2] && !fieldcheck[3]) ){
-##     ## not even started yet
-##     return (0)
-##   }
-##   if(fieldcheck[2] && !fieldcheck[3]) {
-##     ## started, but nothing saved
-##     return (0)
-##   }
-##   if(fieldcheck[2] && fieldcheck[3]) {
-##     ## started, something saved
-##     return (0)
-##   }
-##   if(!fieldcheck[2] && fieldcheck[3]) {
-##     ## started, inprocess deleted, something saved
-##     return (statusdoc$processed)
-##   }
-
-## }
-
-
-## couch.save.is.processed <- function(district,year,vdsid,doc=list(processed=1), local=TRUE, h=getCurlHandle()){
-
-##   current = couch.get(c(district,year),vdsid,h=h)
-##   curr.names <- names(current)
-##   # print(current)
-##   if(length(curr.names)>0 && length(current$error)==0 ) {
-##     doc.names  <- names(doc)
-##     keep.names <- setdiff(curr.names,doc.names)
-##     ##    print(paste('current',curr.names,'doc',doc.names,'keep',keep.names))
-##     if(length(keep.names)>0) doc[keep.names] = current[keep.names]
-##   }
-##   ## doc = merge (doc,current)
-##   couch.put(c(district,year),vdsid,doc,h=h)
-
-## }
-
-##################################################
-## generalization of the above
 ##################################################
 ## revised to use multi-year, multi-district tracking db
-couch.check.state <- function(district,year,vdsid,process, local=TRUE){
+couch.check.state <- function(year,vdsid,process, local=TRUE){
   statusdoc <- couch.get(trackingdb,vdsid,local=local)
   result <- 'error' ## default to error
-  fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
-  if( (fieldcheck[1] && statusdoc$error == "not_found") ||
-     !fieldcheck[2] ){
-    ## either no status doc, or no recorded state for this process, mark as 'todo'
+  current.names <- names(statusdoc)
+  if('error' %in% current.names){
     result <- 'todo'
   }else{
-    result <- statusdoc[[paste(year)]][[process]]
+    fieldcheck <- c(process) %in% names(statusdoc[[paste(year)]])
+    if(!fieldcheck[1] ){
+      ## either no status doc, or no recorded state for this process, mark as 'todo'
+      result <- 'todo'
+    }else{
+      result <- statusdoc[[paste(year)]][[process]]
+    }
   }
   result
 }
 
-couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRUE){
+couch.checkout.for.processing <- function(district,year,vdsid,process,state='inprocess', local=TRUE, force=FALSE){
   result <- 'done' ## default to done
   statusdoc = couch.get(trackingdb,vdsid,local=local)
   fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
-  if( (fieldcheck[1] && statusdoc$error == "not_found") ){
+  if( (fieldcheck[1] && statusdoc['error'] == "not_found") ){
     result = 'todo'
     statusdoc = list() ## R doesn't interpolate variables in statements like list(process='state')
     statusdoc[paste(year)]=list()
-    statusdoc[[paste(year)]][[process]]='inprocess'
+    statusdoc[[paste(year)]][[process]]=state
     putstatus <- fromJSON(couch.put(trackingdb,vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
     if(fieldcheck[1]){
       result <- 'error'
     }
 
-  }else if( !fieldcheck[2] ||  statusdoc[[paste(year)]][[process]] == 'todo' ){
+  }else if( !fieldcheck[2] ||  statusdoc[[paste(year)]][[process]] == 'todo' || force ){
     result = 'todo'
-    statusdoc[[paste(year)]][[process]]='inprocess'
+    statusdoc[[paste(year)]][[process]]=state
     putstatus <- fromJSON(couch.put(trackingdb,vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
     if(fieldcheck[1]){
@@ -368,41 +335,37 @@ couch.checkout.for.processing <- function(district,year,vdsid,process, local=TRU
   result
 }
 
-couch.set.state <- function(district,year,vdsid, doc, local=TRUE, h=getCurlHandle()){
+couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()){
 
-  current = couch.get(trackingdb,vdsid,local=local,h=h)
+  current = couch.get(trackingdb,detector.id,local=local,h=h)
   doc.names  <- names(doc)
-  if(is.null(current$error)){
-    ## have some data in the tracking db for this doc
-    ## just append/overwrite the state doc information for the given year
-    current[[paste(year)]][doc.names] = doc
-  }else{
+  current.names <- names(current)
+  if('error' %in% current.names){
     ## error means there isn't a current document in the db
     current = list() ## R doesn't interpolate variables in statements like list(process='state')
     current[[paste(year)]][doc.names] = doc
+  }else{
+    ## have some data in the tracking db for this doc
+    ## just append/overwrite the state doc information for the given year
+    current[[paste(year)]][doc.names] = doc
   }
-  couch.put(trackingdb,vdsid,current,local=local,h=h)
+  couch.put(trackingdb,detector.id,current,local=local,h=h)
 
 }
 
 #########
 
-
-## not really async, but whatever.  more like split up into pieces
-couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
-
+couch.bulk.docs.save <- function(db,docdf,local=TRUE,chunksize=1000,makeJSON=jsondump4){
   ## here I assume that docdf is a datafame
+  ## couch.makedb(db)
 
-  ## push 10000 at a time
-  i <- 1000
+  ## push 1000 at a time
+  i <- chunksize
   maxi <- length(docdf[,1])
   if(i > maxi ) i <- maxi
 
   j <- 1
 
-  db <- couch.makedbname(c(district,year,vdsid))
-
-  couch.makedb(c(district,year,vdsid))
 
   ## the bulk docs target
   uri=paste(couchdb,db,'_bulk_docs',sep="/")
@@ -419,7 +382,7 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
     }
     ## for next iteration
     if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
-    bulkdocs <- jsondump4(chunk)
+    bulkdocs <- makeJSON(chunk)
     h = getCurlHandle()
     curlresult <- try( curlPerform(
                                    url = uri
@@ -443,9 +406,17 @@ couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE){
                   ,curl = h
                   )
     }
-
   }
   gc()
+  1
+}
+
+## not really async, but whatever.  more like split up into pieces
+couch.async.bulk.docs.save <- function(district,year,vdsid,docdf, local=TRUE, chunksize=1000){
+
+  db <- couch.makedbname(c(district,year,vdsid))
+
+  couch.bulk.docs.save(db=db,docdf=docdf,local=local,chunksize=chunksize)
 
 }
 
@@ -460,7 +431,7 @@ couch.start.replication <- function(src,tgt,id=NULL,continuous=FALSE){
         )
   if(!is.null(id)){
     current <- couch.get('_replicator',id,local=TRUE,h=h)
-    if(length(current$error) == 0){
+    if(length(grep( pattern="error",x=names(doc),perl=TRUE)) > 0){
       ##doc = merge(doc,current)
       doc['_rev']=current['_rev']
     }
@@ -588,3 +559,94 @@ jsondump5 <- function(chunk){
 }
 
 
+## PUT somedatabase/document/attachment?rev=123 HTTP/1.0
+## Content-Length: 245
+## Content-Type: image/jpeg
+## <JPEG data>
+##################################################
+## PUT /test_suite_db/multipart HTTP/1.1
+## Content-Type: multipart/related;boundary="abc123"
+
+## --abc123
+## content-type: application/json
+
+## {"body":"This is a body.",
+## "_attachments":{
+##   "foo.txt": {
+##     "follows":true,
+##     "content_type":"text/plain",
+##     "length":21
+##     },
+##   "bar.txt": {
+##     "follows":true,
+##     "content_type":"text/plain",
+##     "length":20
+##     },
+##   }
+## }
+
+## --abc123
+
+## this is 21 chars long
+## --abc123
+
+## this is 20 chars lon
+## --abc123--
+
+couch.attach <- function(db=trackingdb,docname,attfile, local=TRUE, priv=FALSE, h=getCurlHandle()){
+
+  current = couch.get(db,docname,local=local,h=h)
+  revision <- paste('rev',current['_rev'],sep='=')
+
+  cdb <- localcouchdb
+  if(!local){
+    cdb <- couchdb
+  }
+
+  file.path <- unlist(strsplit(attfile,"/"))
+  flen <- length(file.path)
+  filename <- file.path[flen]
+
+  uri=paste(cdb,db,docname,filename,sep="/");
+  uri=gsub("\\s","%20",x=uri,perl=TRUE)
+  uri <- paste(uri,revision,sep='?')
+  if(priv){
+    couch.session(h,local)
+  }
+
+  content.type <- guessMIMEType(attfile, "application/x-binary")
+
+  print(paste('putting attachment'))
+  putting.command <- paste('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''))
+  ## have to wait, in case there are other docs to attach
+  ## until I figure out how to multiple at a time deal thingee
+    r <- try(
+             print(system2('curl',paste('-v -X PUT -H "Content-Type: ',content.type,'" ',uri,' --data-binary @',attfile,sep=''),wait=TRUE ,stdout=TRUE,stderr=TRUE))
+             )
+    if(class(r) == "try-error") {
+      print('doit later')
+      ## make a note of it
+      cat(paste('couch.attach failed:',putting.command,'\n' ),file='failedcurl.log',append=TRUE)
+    }else{
+      print('success')
+    }
+}
+
+couch.get.attachment <- function(db=trackingdb,docname,attachment, local=TRUE){##, h=getCurlHandle()){
+  cdb <- localcouchdb
+  if(!local){
+    cdb <- couchdb
+  }
+  uri=paste(cdb,db,docname,attachment,sep="/");
+  uri=gsub("\\s","%20",x=uri,perl=TRUE)
+  tmp <- tempfile('remotedata')
+  print(paste('getting attachment',uri))
+  system2('curl',paste('-v',uri),stdout=tmp)
+  return (tmp)
+}
+
+couch.has.attachment <- function(db=trackingdb,docname,attachment,local=TRUE){
+  r <- couch.get(db,docname)
+  attachments <- r[['_attachments']]
+  attachment %in% names(attachments)
+}
