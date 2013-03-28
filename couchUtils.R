@@ -4,6 +4,9 @@
 ## local is where to send bulk saves,
 ## and the source of replication calls
 
+library(RCurl)
+library(RJSONIO)
+
 couchenv = Sys.getenv(c(
   "COUCHDB_HOST", "COUCHDB_USER", "COUCHDB_PASS", "COUCHDB_PORT"
   , "COUCHDB_LOCALHOST", "COUCHDB_LOCALUSER", "COUCHDB_LOCALPASS", "COUCHDB_LOCALPORT"))
