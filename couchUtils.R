@@ -294,7 +294,7 @@ couch.check.state <- function(year,vdsid,process, local=TRUE){
   statusdoc <- couch.get(trackingdb,vdsid,local=local)
   result <- 'error' ## default to error
   current.names <- names(statusdoc)
-  if('error' %in% current.names){
+  if('error' %in% current.names && length(names)==2){
     result <- 'todo'
   }else{
     fieldcheck <- c(process) %in% names(statusdoc[[paste(year)]])
@@ -343,7 +343,7 @@ couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()
   current = couch.get(trackingdb,detector.id,local=local,h=h)
   doc.names  <- names(doc)
   current.names <- names(current)
-  if('error' %in% current.names){
+  if('error' %in% current.names && length(current.names) == 2){
     ## error means there isn't a current document in the db
     current = list() ## R doesn't interpolate variables in statements like list(process='state')
     current[[paste(year)]][doc.names] = doc
@@ -351,6 +351,11 @@ couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()
     ## have some data in the tracking db for this doc
     ## just append/overwrite the state doc information for the given year
     current[[paste(year)]][doc.names] = doc
+  }
+  ## clean mess
+  if('error' %in% current.names && length(current.names) > 2){
+    current[['error']] <- NULL
+    current[['reason']] <- NULL
   }
   couch.put(trackingdb,detector.id,current,local=local,h=h)
 
