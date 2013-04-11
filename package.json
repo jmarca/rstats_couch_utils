@@ -1,0 +1,29 @@
+{
+  "name": "rstats_couch_utils",
+  "version": "0.1.0",
+  "description": "An R program for interacting with CouchDB, with tests that require node packages",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "async": "~0.2.7",
+    "lodash": "~1.1.1",
+    "should": "~1.2.2",
+    "superagent": "~0.14.1"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmarca/rstats_couch_utils"
+  },
+  "keywords": [
+    "R"
+  ],
+  "author": "James E. Marca",
+  "license": "GPLv2",
+  "readmeFilename": "README.md"
+}

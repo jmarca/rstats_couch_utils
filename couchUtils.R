@@ -648,9 +648,10 @@ couch.get.attachment <- function(db=trackingdb,docname,attachment, local=TRUE){#
   uri=paste(cdb,db,docname,attachment,sep="/");
   uri=gsub("\\s","%20",x=uri,perl=TRUE)
   tmp <- tempfile(paste('remotedata',attachment,sep='_'))
+  file.create(tmp)
   print(paste('getting attachment',uri))
   r <- try(
-       system2('curl',uri,stdout=tmp)
+       system2('curl',paste('-s -S',uri),stdout=tmp)
     )
   if(class(r) == "try-error"){
     ## try one more time
@@ -661,13 +662,15 @@ couch.get.attachment <- function(db=trackingdb,docname,attachment, local=TRUE){#
       ## give up
       print('curl failed after two tries to download attachment')
     }else{
-      print('success downloading')
+      print('success downloading, second try')
     }
   }else{
-    print('success downloading')
+    print('success downloading, first try')
   }
   ## load it here
-  load(tmp, .GlobalEnv)
+  res <- load(tmp, .GlobalEnv)
+  unlink(tmp)
+  res
 }
 
 couch.has.attachment <- function(db=trackingdb,docname,attachment,local=TRUE){
