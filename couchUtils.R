@@ -647,7 +647,7 @@ couch.get.attachment <- function(db=trackingdb,docname,attachment, local=TRUE){#
   }
   uri=paste(cdb,db,docname,attachment,sep="/");
   uri=gsub("\\s","%20",x=uri,perl=TRUE)
-  tmp <- tempfile(paste('remotedata',attachment))
+  tmp <- tempfile(paste('remotedata',attachment,sep='_'))
   print(paste('getting attachment',uri))
   r <- try(
        system2('curl',uri,stdout=tmp)
