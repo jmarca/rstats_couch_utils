@@ -666,7 +666,8 @@ couch.get.attachment <- function(db=trackingdb,docname,attachment, local=TRUE){#
   }else{
     print('success downloading')
   }
-  return (tmp)
+  ## load it here
+  load(tmp, .GlobalEnv)
 }
 
 couch.has.attachment <- function(db=trackingdb,docname,attachment,local=TRUE){

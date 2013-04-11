@@ -12,6 +12,11 @@ for R.  In the meantime, feel free to modify this code for your own
 needs, but don't expect it to work for you out of the box as it
 currently contains a lot of project-specific stuff.
 
+With the version bump to 0.1.0, I've changed the way getting
+attachments works.  Now it will load the file in the routine.  If this
+fixes problems I've been having then all routines are likely to move
+to this model.
+
 # License
 
 
