@@ -1,0 +1,9 @@
+Package: rstats_couch_utils
+Title: collection of R scripts to help accessing CouchDB
+Version: 1.0.1
+Authors@R: as.person(c("James Marca <jmarca@translab.its.uci.edu> [aut, cre]"))
+Description: A collection of R scripts that I use to access data from CouchDB.  Helps with writing to and reading from couch.
+Depends: R (>= 3.1.1)
+License: GPLv2
+LazyData: true
+Suggests: testthat

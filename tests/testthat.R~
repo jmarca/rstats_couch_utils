@@ -1,0 +1,4 @@
+library(testthat)
+library(calvad_rscripts)
+
+test_check("rstats_couch_utils")
