@@ -651,12 +651,12 @@ couch.get.attachment <- function(db=trackingdb,docname,attachment, local=TRUE){#
   file.create(tmp)
   print(paste('getting attachment',uri))
   r <- try(
-       system2('curl',paste('-s -S -o',tmp,uri),stdout=FALSE,stderr=TRUE,wait=TRUE)
+       system2('curl',paste('-s -S -o',tmp,uri),stdout=FALSE,stderr=FALSE,wait=TRUE)
     )
   if(class(r) == "try-error"){
     ## try one more time
     r <- try(
-       system2('curl',paste('-v -o',tmp,uri),stdout=FALSE,stderr=TRUE,wait=TRUE)
+       system2('curl',paste('-v -o',tmp,uri),stdout=FALSE,stderr=FALSE,wait=TRUE)
       )
     if(class(r) == "try-error"){
       ## give up
