@@ -290,8 +290,8 @@ couch.session <- function(h,local=TRUE){
 
 ##################################################
 ## revised to use multi-year, multi-district tracking db
-couch.check.state <- function(year,vdsid,process, local=TRUE){
-  statusdoc <- couch.get(trackingdb,vdsid,local=local)
+couch.check.state <- function(year,vdsid,process, local=TRUE,db=trackingdb){
+  statusdoc <- couch.get(db,vdsid,local=local)
   result <- 'error' ## default to error
   current.names <- names(statusdoc)
   if('error' %in% current.names && length(names)==2){
@@ -308,16 +308,19 @@ couch.check.state <- function(year,vdsid,process, local=TRUE){
   result
 }
 
-couch.checkout.for.processing <- function(district,year,vdsid,process,state='inprocess', local=TRUE, force=FALSE){
+couch.checkout.for.processing <- function(district,year,vdsid,
+                                          process,state='inprocess',
+                                          local=TRUE, force=FALSE,
+                                          db=trackingdb){
   result <- 'done' ## default to done
-  statusdoc = couch.get(trackingdb,vdsid,local=local)
+  statusdoc = couch.get(db,vdsid,local=local)
   fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
   if( (fieldcheck[1] && statusdoc['error'] == "not_found") ){
     result = 'todo'
     statusdoc = list() ## R doesn't interpolate variables in statements like list(process='state')
     statusdoc[paste(year)]=list()
     statusdoc[[paste(year)]][[process]]=state
-    putstatus <- fromJSON(couch.put(trackingdb,vdsid,statusdoc,local=local))
+    putstatus <- fromJSON(couch.put(db,vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
     if(fieldcheck[1]){
       result <- 'error'
@@ -326,7 +329,7 @@ couch.checkout.for.processing <- function(district,year,vdsid,process,state='inp
   }else if( !fieldcheck[2] ||  statusdoc[[paste(year)]][[process]] == 'todo' || force ){
     result = 'todo'
     statusdoc[[paste(year)]][[process]]=state
-    putstatus <- fromJSON(couch.put(trackingdb,vdsid,statusdoc,local=local))
+    putstatus <- fromJSON(couch.put(db,vdsid,statusdoc,local=local))
     fieldcheck <- c('error') %in% names(putstatus)
     if(fieldcheck[1]){
       result <- 'error'
@@ -338,9 +341,11 @@ couch.checkout.for.processing <- function(district,year,vdsid,process,state='inp
   result
 }
 
-couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()){
+couch.set.state <- function(year,detector.id, doc,
+                            local=TRUE, h=getCurlHandle(),
+                            db=trackingdb){
 
-  current = couch.get(trackingdb,detector.id,local=local,h=h)
+  current = couch.get(db,detector.id,local=local,h=h)
   doc.names  <- names(doc)
   current.names <- names(current)
   if('error' %in% current.names && length(current.names) == 2){
@@ -357,7 +362,7 @@ couch.set.state <- function(year,detector.id, doc, local=TRUE, h=getCurlHandle()
     current[['error']] <- NULL
     current[['reason']] <- NULL
   }
-  couch.put(trackingdb,detector.id,current,local=local,h=h)
+  couch.put(db,detector.id,current,local=local,h=h)
 
 }
 
