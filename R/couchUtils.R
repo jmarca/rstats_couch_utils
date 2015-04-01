@@ -1,49 +1,5 @@
 
 
-
-couch.makedb <- function( db, local=TRUE ){
-
-  if(length(db)>1){
-    db <- couch.makedbname(db)
-  }
-  # print(paste('making db',db))
-  uri=paste(couchdb,db,sep="/");
-  if(local) uri=paste(localcouchdb,db,sep="/");
-  reader = basicTextGatherer()
-
-  curlPerform(
-      url = uri
-     ,httpheader = c('Content-Type'='application/json')
-     ,customrequest = "PUT"
-     ,writefunction = reader$update
-     ,userpwd=couch_userpwd
-      )
-
-  print(paste( 'making db',db, reader$value() ))
-  reader$value()
-}
-
-couch.deletedb <- function(db, local=TRUE){
-
-  if(length(db)>1){
-    db <- couch.makedbname(db)
-  }
-
-  privcouchdb = paste("http://",couchenv[2],":",couchenv[3],"@",couchenv[1],":",couchenv[4],sep='')
-  uri=paste(privcouchdb,db,sep="/");
-  if(local) uri=paste(localprivcouchdb,db,sep="/");
-
-  reader = basicTextGatherer()
-  curlPerform(
-              url = uri
-              ,httpheader = c('Content-Type'='application/json')
-              ,customrequest = "DELETE"
-              ,writefunction = reader$update
-              )
-
-  print(paste('deleted db',db,reader$value(),collapse=' '))
-}
-
 couch.post <- function(db,doc,local=TRUE,h=getCurlHandle()){
   cdb <- localcouchdb
   if(!local){

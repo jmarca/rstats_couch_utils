@@ -1,4 +1,6 @@
 library('rcouchutils')
+pkg <- as.package('.')
+Sys.setenv(RCOUCHDBUTILS_CONFIG_FILE=paste(pkg$path,'test.config.json',sep='/'))
 
 test_that("make db name stuff works okay",{
     parts <- c('a','b')
