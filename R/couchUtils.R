@@ -1,162 +1,4 @@
 
-
-couch.post <- function(db,doc,local=TRUE,h=getCurlHandle()){
-  cdb <- localcouchdb
-  if(!local){
-    cdb <- couchdb
-  }
-  reader = basicTextGatherer()
-  curlPerform(
-              url = paste(cdb,db,sep="/")
-              ,customrequest = "POST"
-              ,httpheader = c('Content-Type'='application/json')
-              ,postfields = toJSON(doc,collapse='')
-              ,writefunction = reader$update
-              ,curl=h
-              )
-  reader$value()
-
-}
-
-couch.get <- function(db,docname, local=TRUE, h=getCurlHandle()){
-
-  if(length(db)>1){
-    db <- couch.makedbname(db)
-  }
-  uri <- paste(couchdb,db,docname,sep="/");
-  if(local) uri <- paste(localcouchdb,db,docname,sep="/");
-  uri <- gsub("\\s","%20",x=uri,perl=TRUE)
-  ## stupid idea!
-  ## uri <- gsub(":","%3A",x=uri,perl=TRUE)
-  ## print(uri)
-  fromJSON(getURL(uri,curl=h)[[1]],simplify=FALSE)
-
-}
-
-## # Pointer to your couchbase view base.  This is where you find your
-## # own data
-## urlBase <- 'http://couchbase.example.com/sfpd'
-
-## # This is your basic GET request -> parsed JSON.
-## getData <- function(subpath) {
-##   fromJSON(file=paste(urlBase, subpath, sep=''))$rows
-## }
-
-## # And this flattens it into a data frame, optionaly naming the
-## # columns.
-## getFlatData <- function(sub, n=NULL) {
-##   b <- plyr::ldply(getData(sub), unlist)
-##   if (!is.null(n)) {
-##     names(b) <- n
-##   }
-##   b
-## }
-
-couch.put <- function(db,docname,doc, local=TRUE, priv=FALSE, h=getCurlHandle(),dumper=jsondump5){
-
-  if(length(db)>1){
-    db <- couch.makedbname(db)
-  }
-  cdb <- localcouchdb
-  if(!local){
-    cdb <- couchdb
-  }
-  uri=paste(cdb,db,docname,sep="/");
-  uri=gsub("\\s","%20",x=uri,perl=TRUE)
-  if(priv){
-    couch.session(h,local)
-  }
-
-  reader = basicTextGatherer()
-
-  print(paste('putting',uri))
-  curlPerform(
-              url = uri
-              ,customrequest = "PUT"
-              ,httpheader = c('Content-Type'='application/json')
-              ,postfields = dumper(doc)
-              ,writefunction = reader$update
-              ,curl=h
-              )
-  reader$value()
-}
-
-couch.delete <- function(db,docname,doc, local=TRUE){
-
-  if(length(db)>1){
-    db <- couch.makedbname(db)
-  }
-
-  uri=paste(couchdb,db,docname,sep="/");
-  if(local) uri=paste(localcouchdb,db,docname,sep="/");
-  uri=paste(uri,paste('rev',doc['_rev'],sep='='),sep='?')
-  reader = basicTextGatherer()
-
-  curlPerform(
-              url = uri
-              ,httpheader = c('Content-Type'='application/json')
-              ,customrequest = "DELETE"
-              ,writefunction = reader$update
-              )
-
-  reader$value()
-}
-
-couch.allDocs <- function(db, query, view='_all_docs', include.docs = TRUE, local=TRUE, h=getCurlHandle()){
-
-  if(length(db)>1){
-    db <- couch.makedbname(db)
-  }
-  cdb <- localcouchdb
-  if(!local){
-    cdb <- couchdb
-  }
-  ## docname <- '_all_docs'
-  uri <- paste(cdb,db,view,sep="/");
-##   print(uri)
-  q <- paste(names(query),query,sep='=',collapse='&')
-  q <- gsub("\\s","%20",x=q,perl=TRUE)
-  q <- gsub('"',"%22",x=q,perl=TRUE)
-  if(include.docs){
-    q <- paste(q,'include_docs=true',sep='&')
-  ## }else{
-  ##   q <- paste(q,sep='&')
-  }
-  print (paste(uri,q,sep='?'))
-  reader <- basicTextGatherer()
-  curlPerform(
-              url = paste(uri,q,sep='?')
-              ,customrequest = "GET"
-              ,httpheader = c('Content-Type'='application/json')
-              ,writefunction = reader$update
-              ,curl=h
-              )
-  fromJSON(reader$value()[[1]],simplify=FALSE)
-}
-
-## session isn't a json post, so has its own call to curlPerform
-couch.session <- function(h,local=TRUE){
-  curlSetOpt(cookiejar='.cookies.txt', curl=h)
-  cdb <- couchdb
-  name <-couchenv[2]
-  pwd <- couchenv[3]
-  if(local){
-    cdb <- localcouchdb
-    name <-couchenv[6]
-    pwd <- couchenv[7]
-  }
-  reader = basicTextGatherer()
-  curlPerform(
-              url = paste(cdb,"_session",sep="/")
-              ,customrequest = "POST"
-              ,writefunction = reader$update
-              ,postfields = paste(paste('name',name,sep='='),paste('password',pwd,sep='='),sep='&')
-              ,curl=h
-              ,httpauth='ANY'
-              )
-  reader$value()
-}
-
 ##################################################
 ## revised to use multi-year, multi-district tracking db
 couch.check.state <- function(year,vdsid,process, local=TRUE,db=trackingdb){
@@ -236,48 +78,8 @@ couch.set.state <- function(year,detector.id, doc,
 }
 
 #########
-couch.start.replication <- function(src,tgt,id=NULL,continuous=FALSE){
 
-  h = getCurlHandle()
-  couch.session(h)
-  doc = list("source" = src,"target" = tgt
-        , "create_target" = TRUE
-        , "continuous" = continuous
-	, "user_ctx" = list( "name"="james", "roles"=list("_admin","") )
-        )
-  if(!is.null(id)){
-    current <- couch.get('_replicator',id,local=TRUE,h=h)
-    if(length(grep( pattern="error",x=names(doc),perl=TRUE)) > 0){
-      ##doc = merge(doc,current)
-      doc['_rev']=current['_rev']
-    }
-  }
-  print(paste("setting up replication doc:\n",toJSON(doc)))
-  result='ok'
-  if(is.null(id)){
-    ## no id, use post
-    result <-
-          couch.post('_replicator'
-               ,doc
-               ,local=TRUE
-               ,h=h
-               )
-
-  }else{
-    result <-
-          couch.put('_replicator'
-              ,id
-              ,doc
-              ,local=TRUE
-              ,h=h
-              )
-
-  }
-  print (result)
-  result
-}
-
-## testing two different ways
+## testing different ways to dump JSON
 
 
 ## jsondump1 <- function(chunk){
@@ -317,8 +119,14 @@ couch.start.replication <- function(src,tgt,id=NULL,continuous=FALSE){
 ##   bulkdocs
 ## }
 
-## and the winner is:
-jsondump4 <- function(chunk){
+
+##' A custom JSON dumper that fixes some of the irritants of RJSONIO::toJSON
+##'
+##' @title jsondump4old
+##' @param chunk an R thing
+##' @return formatted JSON for submitting to CouchDB
+##' @author James E. Marca
+jsondump4old <- function(chunk){
   colnames <- names(chunk)
 
   text.cols    <-  grep( pattern="^(_id|ts)$",x=colnames,perl=TRUE)
@@ -338,6 +146,12 @@ jsondump4 <- function(chunk){
   bulkdocs
 }
 
+##' A custom JSON dumper that fixes some of the irritants of RJSONIO::toJSON
+##'
+##' @title jsondump4
+##' @param chunk an R thing
+##' @return formatted JSON for submitting to CouchDB
+##' @author James E. Marca
 jsondump4 <- function(chunk,bulk=TRUE){
   colnames <- names(chunk)
 
@@ -363,8 +177,14 @@ jsondump4 <- function(chunk,bulk=TRUE){
   bulkdocs
 }
 
+##' A custom JSON dumper that fixes some of the irritants of RJSONIO::toJSON
+##'
+##' @title jsondump5
+##' @param chunk an R thing
+##' @return formatted JSON for submitting to CouchDB
+##' @author James E. Marca
 jsondump5 <- function(chunk){
-  jsonchunk <- toJSON(chunk)
+  jsonchunk <- RJSONIO::toJSON(chunk)
   bulkdocs <- gsub('} {',',',x=paste(jsonchunk,collapse=','),perl=TRUE)
   ## fix JSON:  too many spaces, NA handled wrong
   bulkdocs <- gsub("\\s+"," ",x=bulkdocs,perl=TRUE)
