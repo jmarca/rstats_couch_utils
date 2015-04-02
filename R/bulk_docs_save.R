@@ -1,3 +1,72 @@
+##' Get couchdb _all_docs, or any previously defined view.  The
+##' CouchDB view and _all_docs APIs are about the same.  This function
+##' lets you query either one, and get back all the docs that satisfy
+##' your query parameters.
+##'
+##' It doesn't yet allow the POST versions of _all_docs and view API,
+##' so you can't pass in a list of doc ids to retrieve
+##'
+##' @title couch.allDocs
+##' @param db the database to query
+##' @param query the query parameters, as a named list, named vector
+##' @param view the view to query, will default to '_all_docs'
+##' @param include.docs TRUE or FALSE, defaults to TRUE.  Whether or
+##' not to download the document content, or to just get a list of the
+##' doc ids and revisions.  CouchDB offers both choices.  In no case
+##' will this function download attachments as well
+##' @param h an RCurl handle, will default to getting anew one.
+##' @return the result of the query, parsed into R lists or whatnot
+##' @author James E. Marca
+couch.allDocs <- function(db, query, view='_all_docs',
+                          include.docs = TRUE,
+                          h=RCurl::getCurlHandle()){
+
+
+    if(length(db)>1){
+        db <- couch.makedbname(db)
+    }
+    couchdb <-  couch.get.url()
+    couch_userpwd <- couch.get.authstring()
+    uri <- paste(couchdb,db,view,sep="/");
+    q <- ''
+    if(!missing(query)){
+        q <- paste(names(query),RJSONIO::toJSON(query,
+                                                .withNames=FALSE,
+                                                container=FALSE),
+                   sep='=',
+                   collapse='&')
+        q <- gsub("\\s","%20",x=q,perl=TRUE)
+        q <- gsub('"',"%22",x=q,perl=TRUE)
+    }
+    if(include.docs){
+        q <- paste(q,'include_docs=true',sep='&')
+        ## }else{
+        ##   q <- paste(q,sep='&')
+    }
+    uri <- paste(uri,q,sep='?')
+    print(uri)
+    reader <- basicTextGatherer()
+    if(is.null(couch_userpwd)){
+        curlPerform(
+            url = uri
+           ,customrequest = "GET"
+           ,httpheader = c('Content-Type'='application/json')
+           ,writefunction = reader$update
+           ,curl=h
+            )
+    }else{
+        curlPerform(
+            url = uri
+           ,customrequest = "GET"
+           ,httpheader = c('Content-Type'='application/json')
+           ,writefunction = reader$update
+           ,curl=h
+           ,userpwd=couch_userpwd
+            )
+    }
+    RJSONIO::fromJSON(reader$value()[[1]],simplify=FALSE)
+}
+
 ##' null reader for RCurl when bulk saving
 ##'
 ##' pretty much copied from the RCurl docs, as I recall
@@ -60,7 +129,6 @@ nullTextGatherer <- function(txt = character(), max = NA, value = NULL)
 ##' @param db the database to save into.  Default to whatever is in
 ##' the config file
 ##' @param docdf the document to save, as a dataframe
-##' @param local cruft, ignore, but kept for backwards compatibility
 ##' @param chunksize defaults to 1000.  How many docs to write at a time
 ##' @param makeJSON a function to use to create JSON
 ##' @return 1, or die trying
@@ -68,7 +136,6 @@ nullTextGatherer <- function(txt = character(), max = NA, value = NULL)
 ##' @author James E. Marca
 couch.bulk.docs.save <- function(db='default',
                                  docdf,
-                                 local=TRUE,
                                  chunksize=1000,
                                  makeJSON=jsondump4){
     ## here I assume that docdf is a datafame
