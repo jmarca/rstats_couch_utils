@@ -60,6 +60,30 @@ test_that("can retrieve all docs",{
         expect_true(row$id %in% c('saute','sausage'))
     }
 
+    ## now with keys
+    res <- couch.allDocsPost(dbname,
+                             keys=
+                                 list('keys'=c('eggs','saute'),
+                                      'descending'=TRUE))
+    expect_that(res,is_a('list'))
+    expect_that(names(res),equals(c('total_rows','offset','rows')))
+    expect_that(res$total_rows,equals(4))
+
+    expect_that(length(res$rows),equals(2))
+    expect_that(res$rows[[1]]$id,equals('saute')) ## descending
+    for(row in res$rows){
+        expect_that(names(row),equals(c('id','key','value','doc')))
+        expect_that(names(row$doc),equals(c('_id','_rev',
+                                            'one potato',
+                                            'beer',
+                                            'foo')))
+        expect_that(row$doc[['one potato']],equals('two potatoes'))
+        expect_that(row$doc$beer,equals('food group'))
+        expect_that(row$doc$foo,equals(123))
+        expect_true(row$id %in% c('saute','eggs'))
+    }
+
+
 })
 
 couch.deletedb(parts)

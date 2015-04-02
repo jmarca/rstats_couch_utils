@@ -115,7 +115,7 @@ couch.allDocsPost <- function(db,
                               include.docs = TRUE,
                               h=getCurlHandle()){
     ## bounce over to the GET version if keys isn't passed in
-    if(!missing(keys)){
+    if(missing(keys)){
         return (couch.allDocs(db,view=view,include.docs=include.docs,h=h))
     }
 
@@ -127,26 +127,59 @@ couch.allDocsPost <- function(db,
     uri <- paste(couchdb,db,view,sep="/");
     k <- NULL
 
+    q <- NULL
+    if(include.docs){
+        q <- 'include_docs=true'
+    }
+
     if(is.null(names(keys))){
         ## in this case, just pass as keys
         thekeys <- rjson::toJSON(keys)
         k <- paste('{"keys":',thekeys,'}',sep='')
     }else{
-        k <- rjson::toJSON(keys)
+        ## split keys as body json, others as params
+        thekeys <- rjson::toJSON(keys$keys)
+        k <- paste('{"keys":',thekeys,'}',sep='')
+        keys$keys <- NULL
+        query <- keys
+        qnames <- names(query)
+        if(length(qnames)>0){
+            for(i in 1:length(qnames)){
+                qi <- paste(
+                    qnames[i],
+                    RCurl::curlEscape(
+                        rjson::toJSON(
+                            query[[i]]
+                            )
+                        ),
+                    sep='='
+                    )
+                q <- paste(c(q,qi),collapse='&')
+            }
+        }
     }
-    if(include.docs){
-        uri <- paste(uri,'include_docs=true',sep='?')
-    }
+    uri <- paste(uri,q,sep='?')
     reader <- basicTextGatherer()
-    uri <- RCurl::curlEscape(uri)
-    curlPerform(
-        url = uri
-       ,customrequest = "POST"
-       ,httpheader = c('Content-Type'='application/json')
-       ,postfields = k
-       ,writefunction = reader$update
-       ,curl=h
-        )
+    if(is.null(couch_userpwd)){
+        curlPerform(
+            url = uri
+           ,customrequest = "POST"
+           ,httpheader = c('Content-Type'='application/json')
+           ,postfields = k
+           ,writefunction = reader$update
+           ,curl=h
+            )
+    }else{
+        curlPerform(
+            url = uri
+           ,customrequest = "POST"
+           ,httpheader = c('Content-Type'='application/json')
+           ,postfields = k
+           ,writefunction = reader$update
+           ,curl=h
+           ,userpwd=couch_userpwd
+            )
+    }
     rjson::fromJSON(reader$value()[[1]])
 }
 
