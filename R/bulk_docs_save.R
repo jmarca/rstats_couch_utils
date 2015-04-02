@@ -34,7 +34,15 @@ couch.allDocs <- function(db, query, view='_all_docs',
         q <- NULL
         qnames <- names(query)
         for(i in 1:length(qnames)){
-            qi <- paste(qnames[i],rjson::toJSON(query[[i]]),sep='=')
+            qi <- paste(
+                qnames[i],
+                RCurl::curlEscape(
+                    rjson::toJSON(
+                        query[[i]]
+                        )
+                    ),
+                sep='='
+                )
             q <- paste(c(q,qi),collapse='&')
         }
     }
@@ -42,8 +50,6 @@ couch.allDocs <- function(db, query, view='_all_docs',
         q <- paste(q,'include_docs=true',sep='&')
     }
     uri <- paste(uri,q,sep='?')
-    uri <- RCurl::curlEscape(uri)
-
     reader <- basicTextGatherer()
     if(is.null(couch_userpwd)){
         curlPerform(
@@ -63,7 +69,7 @@ couch.allDocs <- function(db, query, view='_all_docs',
            ,userpwd=couch_userpwd
             )
     }
-    rjson::fromJSON(reader$value()[[1]],simplify=FALSE)
+    rjson::fromJSON(reader$value()[[1]])
 }
 
 
@@ -130,7 +136,6 @@ couch.allDocsPost <- function(db,
     }
     if(include.docs){
         uri <- paste(uri,'include_docs=true',sep='?')
-
     }
     reader <- basicTextGatherer()
     uri <- RCurl::curlEscape(uri)
