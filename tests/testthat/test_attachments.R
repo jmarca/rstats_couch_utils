@@ -54,7 +54,7 @@ test_that("can save attachments to a file",{
     hasit <- couch.has.attachment(dbname,id,'save.RData')
     expect_that(hasit,equals(TRUE))
 
-    getres <- couch.get.attachment.2(dbname,id,'save.RData')
+    getres <- couch.get.attachment(dbname,id,'save.RData')
 
     expect_that(getres,is_a('list'))
 
