@@ -84,9 +84,9 @@ couch.attach <- function(db=trackingdb,
 ##' @param db the database
 ##' @param docname the document id
 ##' @param attachment the name of the attachment to fetch
-##' @return
+##' @return nothing at all this is broken
 ##' @author James E. Marca
-couch.get.attachment <- function(db=trackingdb,docname,attachment){
+couch.get.attachment.broken <- function(db=trackingdb,docname,attachment){
     if(length(db)>1){
         db <- couch.makedbname(db)
     }
@@ -152,13 +152,25 @@ couch.get.attachment <- function(db=trackingdb,docname,attachment){
 ##' load the RData file into R directly, if I want, or whatever.
 ##'
 ##'
-##' @title couch.get.attachment.2
+##' @title couch.get.attachment
 ##' @param db the database
 ##' @param docname the document id
 ##' @param attachment the name of the attachment to fetch
-##' @return
+##' @return a list containing a single entry with the old variable
+##' name that equals the environment into which that variable was
+##' loaded, so that you can reconsititute the data by doing:
+##'
+##'     getres <- couch.get.attachment.2(dbname,id,'save.RData')
+##'     varnames <- names(getres)
+##'     barfl <- getres[[1]][[varnames[1]]]
+##'
+##' In the above, barfl now holds whatever data was originally saved
+##' in the file, nomatter what that data might have originally been
+##' called.  That original variable name can be found by inspecting
+##' the value of varnames[1], if you want.
+##' @export
 ##' @author James E. Marca
-couch.get.attachment.2 <- function(db=trackingdb,docname,attachment){
+couch.get.attachment <- function(db=trackingdb,docname,attachment){
     if(length(db)>1){
         db <- couch.makedbname(db)
     }
