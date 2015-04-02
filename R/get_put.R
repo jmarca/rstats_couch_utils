@@ -34,8 +34,6 @@ couch.post <- function(db,doc,h=RCurl::getCurlHandle()){
          ,postfields = RJSONIO::toJSON(doc,collapse='')
          ,writefunction = reader$update
          ,curl=h
-
-
          ,userpwd=couch_userpwd
           )
   }
@@ -255,31 +253,70 @@ get.rev.from.head <- function(db,docname,h=RCurl::getCurlHandle()){
     doc_rev
 }
 
+##' Get couchdb _all_docs or any view.  The CouchDB view and _all_docs
+##' APIs are about the same.  This function lets you query either one,
+##' and get back all the docs that satisfy your query parameters.
+##'
+##'
+##' @title couch.allDocs
+##' @param db the database to query
+##' @param query the query parameters, as a named list, named vector
+##' @param view the view to query, will default to '_all_docs'
+##' @param include.docs TRUE or FALSE, defaults to TRUE.  Whether or
+##' not to download the document content, or to just get a list of the
+##' doc ids and revisions.  CouchDB offers both choices.  In no case
+##' will this function download attachments as well
+##' @param h an RCurl handle, will default to getting anew one.
+##' @return the result of the query, parsed into R lists or whatnot
+##' @author James E. Marca
 couch.allDocs <- function(db, query, view='_all_docs',
                           include.docs = TRUE,
                           h=RCurl::getCurlHandle()){
 
 
-  uri <- paste(cdb,db,view,sep="/");
-##   print(uri)
-  q <- paste(names(query),query,sep='=',collapse='&')
-  q <- gsub("\\s","%20",x=q,perl=TRUE)
-  q <- gsub('"',"%22",x=q,perl=TRUE)
-  if(include.docs){
-    q <- paste(q,'include_docs=true',sep='&')
-  ## }else{
-  ##   q <- paste(q,sep='&')
-  }
-  print (paste(uri,q,sep='?'))
-  reader <- basicTextGatherer()
-  curlPerform(
-              url = paste(uri,q,sep='?')
-              ,customrequest = "GET"
-              ,httpheader = c('Content-Type'='application/json')
-              ,writefunction = reader$update
-              ,curl=h
-              )
-  fromJSON(reader$value()[[1]],simplify=FALSE)
+    if(length(db)>1){
+        db <- couch.makedbname(db)
+    }
+    couchdb <-  couch.get.url()
+    couch_userpwd <- couch.get.authstring()
+    uri <- paste(couchdb,db,view,sep="/");
+    q <- ''
+    if(!missing(query)){
+        q <- paste(names(query),RJSONIO::toJSON(query,
+                                                .withNames=FALSE,
+                                                container=FALSE),
+                   sep='=',
+                   collapse='&')
+        q <- gsub("\\s","%20",x=q,perl=TRUE)
+        q <- gsub('"',"%22",x=q,perl=TRUE)
+    }
+    if(include.docs){
+        q <- paste(q,'include_docs=true',sep='&')
+        ## }else{
+        ##   q <- paste(q,sep='&')
+    }
+    uri <- paste(uri,q,sep='?')
+    print(uri)
+    reader <- basicTextGatherer()
+    if(is.null(couch_userpwd)){
+        curlPerform(
+            url = uri
+           ,customrequest = "GET"
+           ,httpheader = c('Content-Type'='application/json')
+           ,writefunction = reader$update
+           ,curl=h
+            )
+    }else{
+        curlPerform(
+            url = uri
+           ,customrequest = "GET"
+           ,httpheader = c('Content-Type'='application/json')
+           ,writefunction = reader$update
+           ,curl=h
+           ,userpwd=couch_userpwd
+            )
+    }
+    RJSONIO::fromJSON(reader$value()[[1]],simplify=FALSE)
 }
 
 ##' Set state to a passed in document (a list), which is more robust

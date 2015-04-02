@@ -6,8 +6,6 @@ parts <- c('attachments','testing')
 couch.makedb(parts)
 dbname <-  couch.makedbname(parts)
 
-cat("current frame is", sys.nframe(), "\n")
-
 test_that("can save attachments to a file",{
 
     doc <- list()
