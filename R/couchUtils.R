@@ -103,7 +103,7 @@ couch.checkout.for.processing <- function(district,year,vdsid,
 ## }
 
 
-##' A custom JSON dumper that fixes some of the irritants of RJSONIO::toJSON
+##' A custom JSON dumper that fixes some of the irritants of rjson::toJSON
 ##'
 ##' @title jsondump4old
 ##' @param chunk an R thing
@@ -129,7 +129,7 @@ jsondump4old <- function(chunk){
   bulkdocs
 }
 
-##' A custom JSON dumper that fixes some of the irritants of RJSONIO::toJSON
+##' A custom JSON dumper that fixes some of the irritants of rjson::toJSON
 ##'
 ##' @title jsondump4
 ##' @param chunk an R thing
@@ -160,14 +160,14 @@ jsondump4 <- function(chunk,bulk=TRUE){
   bulkdocs
 }
 
-##' A custom JSON dumper that fixes some of the irritants of RJSONIO::toJSON
+##' A custom JSON dumper that fixes some of the irritants of rjson::toJSON
 ##'
 ##' @title jsondump5
 ##' @param chunk an R thing
 ##' @return formatted JSON for submitting to CouchDB
 ##' @author James E. Marca
 jsondump5 <- function(chunk){
-  jsonchunk <- RJSONIO::toJSON(chunk)
+  jsonchunk <- rjson::toJSON(chunk)
   bulkdocs <- gsub('} {',',',x=paste(jsonchunk,collapse=','),perl=TRUE)
   ## fix JSON:  too many spaces, NA handled wrong
   bulkdocs <- gsub("\\s+"," ",x=bulkdocs,perl=TRUE)

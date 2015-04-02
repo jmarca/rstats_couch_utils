@@ -1,27 +1,28 @@
 
 couch.makedb <- function( db, local=TRUE ){
 
-  if(length(db)>1){
-    db <- couch.makedbname(db)
-  }
-  couchdb <-  couch.get.url()
-  uri <- paste(couchdb,db,sep="/");
-  couch_userpwd <- couch.get.authstring()
+    if(length(db)>1){
+        db <- couch.makedbname(db)
+    }
 
-  ##  print(uri)
+    couchdb <-  couch.get.url()
+    uri <- paste(couchdb,db,sep="/");
+    couch_userpwd <- couch.get.authstring()
 
-  reader = RCurl::basicTextGatherer()
+    ##  print(uri)
 
-  RCurl::curlPerform(
-      url = uri
-     ,httpheader = c('Content-Type'='application/json')
-     ,customrequest = "PUT"
-     ,writefunction = reader$update
-     ,userpwd=couch_userpwd
-      )
+    reader = RCurl::basicTextGatherer()
 
-  ##print(paste( 'making db',db, reader$value() ))
-  RJSONIO::fromJSON(reader$value(),simplify=FALSE)
+    RCurl::curlPerform(
+        url = uri
+       ,httpheader = c('Content-Type'='application/json')
+       ,customrequest = "PUT"
+       ,writefunction = reader$update
+       ,userpwd=couch_userpwd
+        )
+
+    ##print(paste( 'making db',db, reader$value() ))
+    rjson::fromJSON(reader$value())
 }
 
 ##' Delete a CouchDB database
@@ -58,5 +59,5 @@ couch.deletedb <- function(db){
      ,userpwd=couch_userpwd
       )
 
-  RJSONIO::fromJSON(reader$value(),simplify=FALSE)
+  rjson::fromJSON(reader$value())
 }

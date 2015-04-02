@@ -39,7 +39,7 @@ couch.attach <- function(db=trackingdb,
                       ##,verbose=TRUE
                        )
 
-    RJSONIO::fromJSON(reader$value(),simplify=FALSE)
+    rjson::fromJSON(reader$value(),simplify=FALSE)
 
     ## putting.command <- paste('curl',
     ##                          paste('-v -X PUT -H "Content-Type: ',

@@ -4,7 +4,8 @@
 ##' your query parameters.
 ##'
 ##' It doesn't yet allow the POST versions of _all_docs and view API,
-##' so you can't pass in a list of doc ids to retrieve
+##' so you can't pass in a list of doc ids to retrieve. To do that,
+##' you want to use \code{\link{couch.allDocsPost}}
 ##'
 ##' @title couch.allDocs
 ##' @param db the database to query
@@ -30,21 +31,19 @@ couch.allDocs <- function(db, query, view='_all_docs',
     uri <- paste(couchdb,db,view,sep="/");
     q <- ''
     if(!missing(query)){
-        q <- paste(names(query),RJSONIO::toJSON(query,
-                                                .withNames=FALSE,
-                                                container=FALSE),
-                   sep='=',
-                   collapse='&')
-        q <- gsub("\\s","%20",x=q,perl=TRUE)
-        q <- gsub('"',"%22",x=q,perl=TRUE)
+        q <- NULL
+        qnames <- names(query)
+        for(i in 1:length(qnames)){
+            qi <- paste(qnames[i],rjson::toJSON(query[[i]]),sep='=')
+            q <- paste(c(q,qi),collapse='&')
+        }
     }
     if(include.docs){
         q <- paste(q,'include_docs=true',sep='&')
-        ## }else{
-        ##   q <- paste(q,sep='&')
     }
     uri <- paste(uri,q,sep='?')
-    print(uri)
+    uri <- RCurl::curlEscape(uri)
+
     reader <- basicTextGatherer()
     if(is.null(couch_userpwd)){
         curlPerform(
@@ -64,8 +63,88 @@ couch.allDocs <- function(db, query, view='_all_docs',
            ,userpwd=couch_userpwd
             )
     }
-    RJSONIO::fromJSON(reader$value()[[1]],simplify=FALSE)
+    rjson::fromJSON(reader$value()[[1]],simplify=FALSE)
 }
+
+
+
+##' Get couchdb _all_docs, or any previously defined view.  This
+##' version is the POST API version, so you can pass some list of
+##' parameters in and they will be converted into a JSON document and
+##' POSTed to the CouchDB server.
+##'
+##' This version is not a query/GET version. To do that, you want to
+##' use the \code{\link{couch.allDocs}} version.
+##'
+##' To quote the CouchDB docs (as of 1.6.1),
+##' \tabular{l}{
+##' Unlike GET
+##' /{db}/_design/{ddoc}/_view/{view} for accessing views, the POST
+##' method supports the specification of explicit keys to be retrieved
+##' from the view results. The remainder of the POST view
+##' functionality is identical to the GET
+##' /{db}/_design/{ddoc}/_view/{view} API.
+##' }
+##'
+##' For this reason, the parameter here is called keys.  You can also
+##' pass other query options inside of keys, but that type of usage
+##' isn't well supported or tested.
+##'
+##' @title couch.allDocsPost
+##' @param db the database to query
+##' @param keys the keys or query parameters, as a named list, named
+##' vector.  If keys is not passed in, then this function will
+##' actually hand off to \code{\link{couch.allDocs}} to do the work
+##' @param view the view to query, will default to '_all_docs'
+##' @param include.docs TRUE or FALSE, defaults to TRUE.  Whether or
+##' not to download the document content, or to just get a list of the
+##' doc ids and revisions.  CouchDB offers both choices.  In no case
+##' will this function download attachments as well
+##' @param h an RCurl handle, will default to getting anew one.
+##' @return the result of the query, parsed into R lists or whatnot
+##' @author James E. Marca
+couch.allDocsPost <- function(db,
+                              keys,
+                              view='_all_docs',
+                              include.docs = TRUE,
+                              h=getCurlHandle()){
+    ## bounce over to the GET version if keys isn't passed in
+    if(!missing(keys)){
+        return (couch.allDocs(db,view=view,include.docs=include.docs,h=h))
+    }
+
+    if(length(db)>1){
+        db <- couch.makedbname(db)
+    }
+    couchdb <-  couch.get.url()
+    couch_userpwd <- couch.get.authstring()
+    uri <- paste(couchdb,db,view,sep="/");
+    k <- NULL
+
+    if(is.null(names(keys))){
+        ## in this case, just pass as keys
+        thekeys <- rjson::toJSON(keys)
+        k <- paste('{"keys":',thekeys,'}',sep='')
+    }else{
+        k <- rjson::toJSON(keys)
+    }
+    if(include.docs){
+        uri <- paste(uri,'include_docs=true',sep='?')
+
+    }
+    reader <- basicTextGatherer()
+    uri <- RCurl::curlEscape(uri)
+    curlPerform(
+        url = uri
+       ,customrequest = "POST"
+       ,httpheader = c('Content-Type'='application/json')
+       ,postfields = k
+       ,writefunction = reader$update
+       ,curl=h
+        )
+    rjson::fromJSON(reader$value()[[1]])
+}
+
 
 ##' null reader for RCurl when bulk saving
 ##'

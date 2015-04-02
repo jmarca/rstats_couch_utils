@@ -6,7 +6,7 @@ test_that("make db name stuff works okay",{
     parts <- c('a','b')
     config <- get.config()
     expect_that(couch.makedbname(parts),
-                equals(paste(config$dbname,"%2fa%2fb",sep='')))
+                equals(paste(config$dbname,"%2Fa%2Fb",sep='')))
 
     expect_that(couch.makedbname.noescape(parts),
                 equals(paste(config$dbname,"/a/b",sep='')))

@@ -46,10 +46,7 @@ get.config <- function(){
             configfile <- 'test.config.json'
         }
 
-        config <- RJSONIO::fromJSON(content=configfile,
-                                    allowComments=FALSE,
-                                    simplify=FALSE
-                                    )$couchdb
+        config <- rjson::fromJSON(file=configfile)$couchdb
 
         if(is.null(config$host)){
             config$host <- '127.0.0.1'

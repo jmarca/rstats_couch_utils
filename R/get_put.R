@@ -22,7 +22,7 @@ couch.post <- function(db,doc,h=RCurl::getCurlHandle()){
           url = uri
          ,customrequest = "POST"
          ,httpheader = c('Content-Type'='application/json')
-         ,postfields = RJSONIO::toJSON(doc,collapse='')
+         ,postfields = rjson::toJSON(doc,collapse='')
          ,writefunction = reader$update
          ,curl=h
           )
@@ -31,13 +31,13 @@ couch.post <- function(db,doc,h=RCurl::getCurlHandle()){
           url = uri
          ,customrequest = "POST"
          ,httpheader = c('Content-Type'='application/json')
-         ,postfields = RJSONIO::toJSON(doc,collapse='')
+         ,postfields = rjson::toJSON(doc,collapse='')
          ,writefunction = reader$update
          ,curl=h
          ,userpwd=couch_userpwd
           )
   }
-  RJSONIO::fromJSON(reader$value(),simplify=FALSE)
+  rjson::fromJSON(reader$value(),simplify=FALSE)
 }
 
 ##' Get a named document from couchdb database.
@@ -65,12 +65,12 @@ couch.get <- function(db,docname, h=RCurl::getCurlHandle()){
 
   res <- NULL
   if(is.null(couch_userpwd)){
-      res <- RJSONIO::fromJSON(
+      res <- rjson::fromJSON(
           RCurl::getURL(uri,curl=h)[[1]],
           simplify=FALSE
           )
   }else{
-      res <- RJSONIO::fromJSON(
+      res <- rjson::fromJSON(
           RCurl::getURL(uri,curl=h,userpwd=couch_userpwd)[[1]],
           simplify=FALSE
           )
@@ -179,7 +179,7 @@ couch.put <- function(db,docname,doc,h=RCurl::getCurlHandle(),dumper=jsondump5){
           )
 
   }
-  RJSONIO::fromJSON(reader$value(),simplify=FALSE)
+  rjson::fromJSON(reader$value(),simplify=FALSE)
 }
 
 ##' Delete a named document from couchdb database.
@@ -237,7 +237,7 @@ couch.delete <- function(db,docname,doc=NULL,h=RCurl::getCurlHandle()){
           )
   }
 
-  RJSONIO::fromJSON(reader$value(),simplify=FALSE)
+  rjson::fromJSON(reader$value(),simplify=FALSE)
 }
 ##' a convenience wrapper around the head call, above
 ##'

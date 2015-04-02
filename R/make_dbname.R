@@ -31,7 +31,7 @@ couch.preface <- function(components){
 ##' @export
 ##' @author James E. Marca
 couch.makedbname <- function( components ){
-    tolower(paste(couch.preface(components),collapse='%2F'))
+    RCurl::curlEscape(tolower(paste(couch.preface(components),collapse='/')))
 }
 
 ## probably not going to be used anymore, so comment it out and see
