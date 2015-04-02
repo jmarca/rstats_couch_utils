@@ -1,24 +1,32 @@
-
-##################################################
-## revised to use multi-year, multi-district tracking db
-couch.check.state <- function(year,vdsid,process, local=TRUE,db=trackingdb){
-  statusdoc <- couch.get(db,vdsid,local=local)
-  result <- 'error' ## default to error
-  current.names <- names(statusdoc)
-  if('error' %in% current.names && length(names)==2){
-    result <- 'todo'
-  }else{
-    fieldcheck <- c(process) %in% names(statusdoc[[paste(year)]])
-    if(!fieldcheck[1] ){
-      ## either no status doc, or no recorded state for this process, mark as 'todo'
-      result <- 'todo'
-    }else{
-      result <- statusdoc[[paste(year)]][[process]]
-    }
-  }
-  result
-}
-
+##' Checkout a detector for processing
+##'
+##' This enables a sort of multi-machine communication of jobs.  In
+##' practice it doesn't work so well, so I've moved away from it, but
+##' the idea is to "check out" a detector by setting a state of a
+##' processing step as "in progress" (or better, some date value so
+##' that you can repeat jobs in the future without having to scrub
+##' states to zero)
+##'
+##' So, set a job with a date.  Then at some future date, if you want
+##' to redo all the jobs that failed, you can look for "in progress
+##' {date}" and if date isn't the current job's date, then check it
+##' out, uptick the date, and redo the processing task.
+##'
+##' @title couch.checkout.for.processing
+##' @param district the district
+##' @param year the year
+##' @param vdsid the detector id
+##' @param process the process to set to the given state
+##' @param state the state to set the process
+##' @param force TRUE to force setting the state, FALSE to skip if
+##' already set.
+##' @param db the db name, will default to whatever is in the config
+##' file as trackingdb
+##' @return the result of checking out for processing, which is either
+##' 'error' if something went wrong, or whatever state the process is
+##' currently in if not in the 'todo' state, or the result of setting
+##' the "process" to "state"
+##' @author James E. Marca
 couch.checkout.for.processing <- function(district,year,vdsid,
                                           process,state='inprocess',
                                           local=TRUE, force=FALSE,
@@ -50,31 +58,6 @@ couch.checkout.for.processing <- function(district,year,vdsid,
     result = statusdoc[[paste(year)]][[process]]
   }
   result
-}
-
-couch.set.state <- function(year,detector.id, doc,
-                            local=TRUE, h=getCurlHandle(),
-                            db=trackingdb){
-
-  current = couch.get(db,detector.id,local=local,h=h)
-  doc.names  <- names(doc)
-  current.names <- names(current)
-  if('error' %in% current.names && length(current.names) == 2){
-    ## error means there isn't a current document in the db
-    current = list() ## R doesn't interpolate variables in statements like list(process='state')
-    current[[paste(year)]][doc.names] = doc
-  }else{
-    ## have some data in the tracking db for this doc
-    ## just append/overwrite the state doc information for the given year
-    current[[paste(year)]][doc.names] = doc
-  }
-  ## clean mess
-  if('error' %in% current.names && length(current.names) > 2){
-    current[['error']] <- NULL
-    current[['reason']] <- NULL
-  }
-  couch.put(db,detector.id,current,local=local,h=h)
-
 }
 
 #########

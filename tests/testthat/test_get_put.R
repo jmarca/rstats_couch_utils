@@ -83,4 +83,41 @@ test_that("can put and delete",{
 
 })
 
+test_that("can set and check state",{
+
+    dbname <- couch.makedbname(parts)
+    doc <- list()
+    doc[['one potato']] <- 'two potatoes'
+    doc$beer <- 'food group'
+    doc$foo <- 123
+
+    id <- 'franged123'
+
+    set_result <- couch.set.state(year='belsh',
+                                  id=id,
+                                  doc=doc,
+                                  db=dbname
+                                  )
+
+    expect_that(set_result,is_a('list'))
+    expect_that(names(set_result),equals(c('ok','id','rev')))
+    expect_that(set_result$ok,equals(TRUE))
+    expect_that(set_result$id,equals('franged123'))
+
+    state.check <- couch.check.state(year='belsh',
+                                     id=id,
+                                     state='beer',
+                                     db=dbname
+                                     )
+
+    expect_that(state.check,equals('food group'))
+
+    state.check <- couch.check.state(year='belsh',
+                                     id=id,
+                                     state='impute trucks',
+                                     db=dbname
+                                     )
+    expect_that(state.check,equals('todo'))
+
+})
 couch.deletedb(parts)

@@ -243,16 +243,11 @@ couch.delete <- function(db,docname,doc=NULL,h=RCurl::getCurlHandle()){
   RJSONIO::fromJSON(reader$value(),simplify=FALSE)
 }
 
-couch.allDocs <- function(db, query, view='_all_docs', include.docs = TRUE, local=TRUE, h=getCurlHandle()){
+couch.allDocs <- function(db, query, view='_all_docs',
+                          include.docs = TRUE,
+                          h=RCurl::getCurlHandle()){
 
-  if(length(db)>1){
-    db <- couch.makedbname(db)
-  }
-  cdb <- localcouchdb
-  if(!local){
-    cdb <- couchdb
-  }
-  ## docname <- '_all_docs'
+
   uri <- paste(cdb,db,view,sep="/");
 ##   print(uri)
   q <- paste(names(query),query,sep='=',collapse='&')
@@ -273,4 +268,78 @@ couch.allDocs <- function(db, query, view='_all_docs', include.docs = TRUE, loca
               ,curl=h
               )
   fromJSON(reader$value()[[1]],simplify=FALSE)
+}
+
+##' Set state to a passed in document (a list), which is more robust
+##' that the dumb checkout for processing version in couchUtils.R
+##'
+##' All of the list items will be added to the doc:year:{} as new
+##' items in teh JSON doc
+##'
+##' @title couch.set.state
+##' @param year the year
+##' @param id the detector id (VDS or WIM or whatever type detector)
+##' @param doc the list() of named values to add to the JSON subpart
+##' under the year
+##' @param h a prior curl handle, or will automatically get a new one
+##' @param db the name of the state database, defaults to whatever is
+##' in the config doc under trackingdb
+##' @return the result of the call to \code{\link{couch.put}}
+##' @author James E. Marca
+couch.set.state <- function(year,id, doc,
+                            h=RCurl::getCurlHandle(),
+                            db=NULL){
+
+  current = couch.get(db,id,h=h)
+  doc.names  <- names(doc)
+  current.names <- names(current)
+  if('error' %in% current.names && length(current.names) == 2){
+      ## error means there isn't a current document in the db
+      current = list()
+  }
+  ## R doesn't interpolate variables in statements like
+  ## list(doc.names=doc)
+  current[[paste(year)]][doc.names] = doc
+  ## clean mess
+  if('error' %in% current.names && length(current.names) > 2){
+    current[['error']] <- NULL
+    current[['reason']] <- NULL
+  }
+  couch.put(db,id,current,h=h)
+
+}
+##' Check the state of the given detector on the given year
+##'
+##' Basic idea is to use CouchDB as a sort of state database for each
+##' detector.  Stash in a doc (identified by the detector's id)
+##' everything that I know about the detector, by year.
+##'
+##' @title couch.check.state
+##' @param year the year for this state bit
+##' @param id the id of the detector.  Can be a VDS id or a WIM id, or
+##' any other detector id that is unique.  For example, for WIM
+##' detectors I add on the direction and the letters "wim", as in
+##' "wim.10.N"
+##' @param state the new state to stash in the detector's doc, for the
+##' given year
+##' @param db the state db, will default to whatever is configured in
+##' the config file as "couchdb":{...,"trackingdb":"whatever",...}
+##' @return either the status, if found, or "todo" if not
+##' @author James E. Marca
+couch.check.state <- function(year,id,state,db=trackingdb){
+  statusdoc <- couch.get(db,id)
+  result <- 'error' ## default to error
+  current.names <- names(statusdoc)
+  if('error' %in% current.names && length(names)==2){
+    result <- 'todo'
+  }else{
+    fieldcheck <- c(state) %in% names(statusdoc[[paste(year)]])
+    if(!fieldcheck[1] ){
+      ## either no status doc, or no recorded state for this state, mark as 'todo'
+      result <- 'todo'
+    }else{
+      result <- statusdoc[[paste(year)]][[state]]
+    }
+  }
+  result
 }
