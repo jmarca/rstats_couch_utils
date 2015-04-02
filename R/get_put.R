@@ -22,7 +22,7 @@ couch.post <- function(db,doc,h=RCurl::getCurlHandle()){
           url = uri
          ,customrequest = "POST"
          ,httpheader = c('Content-Type'='application/json')
-         ,postfields = rjson::toJSON(doc,collapse='')
+         ,postfields = rjson::toJSON(doc)
          ,writefunction = reader$update
          ,curl=h
           )
@@ -31,13 +31,13 @@ couch.post <- function(db,doc,h=RCurl::getCurlHandle()){
           url = uri
          ,customrequest = "POST"
          ,httpheader = c('Content-Type'='application/json')
-         ,postfields = rjson::toJSON(doc,collapse='')
+         ,postfields = rjson::toJSON(doc)
          ,writefunction = reader$update
          ,curl=h
          ,userpwd=couch_userpwd
           )
   }
-  rjson::fromJSON(reader$value(),simplify=FALSE)
+  rjson::fromJSON(reader$value())
 }
 
 ##' Get a named document from couchdb database.
@@ -56,23 +56,21 @@ couch.get <- function(db,docname, h=RCurl::getCurlHandle()){
     db <- couch.makedbname(db)
   }
   couchdb <-  couch.get.url()
-  uri <- paste(couchdb,db,docname,sep="/");
-
-  ## remove spaces in url or doc id
-  uri <- gsub("\\s","%20",x=uri,perl=TRUE)
+  uri <- paste(couchdb,db,
+               ## remove spaces in url or doc id
+               RCurl::curlEscape(docname),
+               sep="/");
 
   couch_userpwd <- couch.get.authstring()
 
   res <- NULL
   if(is.null(couch_userpwd)){
       res <- rjson::fromJSON(
-          RCurl::getURL(uri,curl=h)[[1]],
-          simplify=FALSE
+          RCurl::getURL(uri,curl=h)[[1]]
           )
   }else{
       res <- rjson::fromJSON(
-          RCurl::getURL(uri,curl=h,userpwd=couch_userpwd)[[1]],
-          simplify=FALSE
+          RCurl::getURL(uri,curl=h,userpwd=couch_userpwd)[[1]]
           )
   }
   res
@@ -94,10 +92,10 @@ couch.head <- function(db,docname, h=RCurl::getCurlHandle()){
     db <- couch.makedbname(db)
   }
   couchdb <-  couch.get.url()
-  uri <- paste(couchdb,db,docname,sep="/");
-
-  ## remove spaces in url or doc id
-  uri <- gsub("\\s","%20",x=uri,perl=TRUE)
+  uri <- paste(couchdb,db,
+               ## remove spaces in url or doc id
+               RCurl::curlEscape(docname),
+               sep="/");
 
   couch_userpwd <- couch.get.authstring()
 
@@ -149,15 +147,12 @@ couch.put <- function(db,docname,doc,h=RCurl::getCurlHandle(),dumper=jsondump5){
     db <- couch.makedbname(db)
   }
   couchdb <-  couch.get.url()
-  uri <- paste(couchdb,db,docname,sep="/")
-
+  uri <- paste(couchdb,db,
+               ## remove spaces in url or doc id
+               RCurl::curlEscape(docname),
+               sep="/");
   couch_userpwd <- couch.get.authstring()
-
-  ## remove spaces in url or doc id
-  uri <- gsub("\\s","%20",x=uri,perl=TRUE)
-
   reader = RCurl::basicTextGatherer()
-
   if(is.null(couch_userpwd)){
       RCurl::curlPerform(
           url = uri
@@ -179,7 +174,7 @@ couch.put <- function(db,docname,doc,h=RCurl::getCurlHandle(),dumper=jsondump5){
           )
 
   }
-  rjson::fromJSON(reader$value(),simplify=FALSE)
+  rjson::fromJSON(reader$value())
 }
 
 ##' Delete a named document from couchdb database.
@@ -204,7 +199,11 @@ couch.delete <- function(db,docname,doc=NULL,h=RCurl::getCurlHandle()){
     db <- couch.makedbname(db)
   }
   couchdb <-  couch.get.url()
-  uri <- paste(couchdb,db,docname,sep="/")
+  uri <- paste(couchdb,db,
+               ## remove spaces in url or doc id
+               RCurl::curlEscape(docname),
+               sep="/");
+
   couch_userpwd <- couch.get.authstring()
 
   doc_rev <- NULL
@@ -215,9 +214,6 @@ couch.delete <- function(db,docname,doc=NULL,h=RCurl::getCurlHandle()){
       doc_rev <- doc['_rev']
   }
   uri <- paste(uri,paste('rev',doc_rev,sep='='),sep='?')
-
-  ## remove spaces in url or doc id
-  uri <- gsub("\\s","%20",x=uri,perl=TRUE)
   reader = RCurl::basicTextGatherer()
 
   if(is.null(couch_userpwd)){
@@ -237,7 +233,7 @@ couch.delete <- function(db,docname,doc=NULL,h=RCurl::getCurlHandle()){
           )
   }
 
-  rjson::fromJSON(reader$value(),simplify=FALSE)
+  rjson::fromJSON(reader$value())
 }
 ##' a convenience wrapper around the head call, above
 ##'

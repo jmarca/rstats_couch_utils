@@ -5,6 +5,8 @@ couch.attach <- function(db=trackingdb,
                          attfile,
                          h=RCurl::getCurlHandle()){
 
+    establish_session <- couch.session(h)
+
     file.path <- unlist(strsplit(attfile,"/"))
     flen <- length(file.path)
     filename <- file.path[flen]
@@ -13,18 +15,17 @@ couch.attach <- function(db=trackingdb,
         db <- couch.makedbname(db)
     }
     couchdb <-  couch.get.url()
-    uri <- paste(couchdb,db,docname,filename,sep="/")
+    uri <- paste(couchdb,db,
+               ## remove spaces in url or doc id
+               RCurl::curlEscape(docname),
+               RCurl::curlEscape(filename),
+               sep="/");
     couch_userpwd <- couch.get.authstring()
 
     doc_rev <- get.rev.from.head(db,docname,h)
 
     uri <- paste(uri,paste('rev',doc_rev,sep='='),sep='?')
-    ## remove spaces in url or doc id
-    uri <- gsub("\\s","%20",x=uri,perl=TRUE)
 
-    ## print(paste('putting attachment using blobity blob to',uri))
-
-    ##couch.session(h)
     content.type <- RCurl::guessMIMEType(attfile, "application/x-binary")
 
     reader = RCurl::basicTextGatherer()
@@ -35,11 +36,12 @@ couch.attach <- function(db=trackingdb,
                        writefunction = reader$update,
                        readdata = f@ref,
                        infilesize = file.info(attfile)[1, "size"],
-                       httpheader = c('Content-Type'=content.type[[1]])
+                       httpheader = c('Content-Type'=content.type[[1]]),
+                       curl=h
                       ##,verbose=TRUE
                        )
 
-    rjson::fromJSON(reader$value(),simplify=FALSE)
+    rjson::fromJSON(reader$value())
 
     ## putting.command <- paste('curl',
     ##                          paste('-v -X PUT -H "Content-Type: ',
@@ -64,77 +66,80 @@ couch.attach <- function(db=trackingdb,
 
 }
 
-##' Retrieve an attachment from CouchDB document
-##'
-##' This function is used almost exclusively to fetch RData files that
-##' have been attached to CouchDB document.  The way it works is to
-##' call out to curl via system2, save the file in a temp directory
-##' with a tempfile name, and then load the file up from there.  This
-##' works.  Not pretty, but it is fairly robust.
-##'
-##'
-##' This will get the requested attachment.  I perhaps should stick
-##' with using RCurl, but I'm so sick of wrestling with it tonight
-##' that I'm going to keep this function the old way of just using
-##' system2 and curl straight.  The advantage is that this lets me
-##' load the RData file into R directly, if I want, or whatever.
-##'
-##'
-##' @title couch.get.attachment.2
-##' @param db the database
-##' @param docname the document id
-##' @param attachment the name of the attachment to fetch
-##' @return nothing at all this is broken
-##' @author James E. Marca
-couch.get.attachment.broken <- function(db=trackingdb,docname,attachment){
-    if(length(db)>1){
-        db <- couch.makedbname(db)
-    }
-    couchdb <-  couch.get.url()
-    uri <- paste(couchdb,db,docname,attachment,sep="/")
-    uri=gsub("\\s","%20",x=uri,perl=TRUE)
+## ##' Retrieve an attachment from CouchDB document
+## ##'
+## ##' This function is used almost exclusively to fetch RData files that
+## ##' have been attached to CouchDB document.  The way it works is to
+## ##' call out to curl via system2, save the file in a temp directory
+## ##' with a tempfile name, and then load the file up from there.  This
+## ##' works.  Not pretty, but it is fairly robust.
+## ##'
+## ##'
+## ##' This will get the requested attachment.  I perhaps should stick
+## ##' with using RCurl, but I'm so sick of wrestling with it tonight
+## ##' that I'm going to keep this function the old way of just using
+## ##' system2 and curl straight.  The advantage is that this lets me
+## ##' load the RData file into R directly, if I want, or whatever.
+## ##'
+## ##'
+## ##' @title couch.get.attachment.2
+## ##' @param db the database
+## ##' @param docname the document id
+## ##' @param attachment the name of the attachment to fetch
+## ##' @return nothing at all this is broken
+## ##' @author James E. Marca
+## couch.get.attachment.broken <- function(db=trackingdb,docname,attachment){
+##     if(length(db)>1){
+##         db <- couch.makedbname(db)
+##     }
+##     couchdb <-  couch.get.url()
+##     uri <- paste(couchdb,db,
+##                ## remove spaces in url or doc id
+##                RCurl::curlEscape(docname),
+##                RCurl::curlEscape(attachment),
+##                sep="/");
 
-    ## taken from the RCurl manual
-    h = RCurl::basicTextGatherer()
-    content = RCurl::getBinaryURL(
-        url=uri,
-        .opts = list(headerfunction = h$update)
-        )
-    header = parseHTTPHeader(h$value())
-    type = strsplit(header["Content-Type"], "/")[[1]]
-    if(type[2] %in% c("x-gzip", "gzip")) {
-        if(require(Rcompression))
-            x = gunzip(content)
-    }
+##     ## taken from the RCurl manual
+##     h = RCurl::basicTextGatherer()
+##     content = RCurl::getBinaryURL(
+##         url=uri,
+##         .opts = list(headerfunction = h$update)
+##         )
+##     header = parseHTTPHeader(h$value())
+##     type = strsplit(header["Content-Type"], "/")[[1]]
+##     if(type[2] %in% c("x-gzip", "gzip")) {
+##         if(require(Rcompression))
+##             x = gunzip(content)
+##     }
 
 
-    tmp <- tempfile(paste('remotedata',attachment,sep='_'))
+##     tmp <- tempfile(paste('remotedata',attachment,sep='_'))
 
-    file.create(tmp)
+##     file.create(tmp)
 
-    ## print(paste('getting attachment',uri))
-    r <- try(
-        system2('curl',paste('-s -S -o',tmp,uri),stdout=FALSE,stderr=FALSE,wait=TRUE)
-        )
-    if(class(r) == "try-error"){
-        ## try one more time
-        r <- try(
-            system2('curl',paste('-v -o',tmp,uri),stdout=FALSE,stderr=FALSE,wait=TRUE)
-            )
-        if(class(r) == "try-error"){
-            ## give up
-            print('curl failed after two tries to download attachment')
-        }else{
-            print('success downloading, second try')
-        }
-    }else{
-        print('success downloading, first try')
-    }
-    ## load it here
-    res <- load(tmp, .GlobalEnv)
-    unlink(tmp)
-    res
-}
+##     ## print(paste('getting attachment',uri))
+##     r <- try(
+##         system2('curl',paste('-s -S -o',tmp,uri),stdout=FALSE,stderr=FALSE,wait=TRUE)
+##         )
+##     if(class(r) == "try-error"){
+##         ## try one more time
+##         r <- try(
+##             system2('curl',paste('-v -o',tmp,uri),stdout=FALSE,stderr=FALSE,wait=TRUE)
+##             )
+##         if(class(r) == "try-error"){
+##             ## give up
+##             print('curl failed after two tries to download attachment')
+##         }else{
+##             print('success downloading, second try')
+##         }
+##     }else{
+##         print('success downloading, first try')
+##     }
+##     ## load it here
+##     res <- load(tmp, .GlobalEnv)
+##     unlink(tmp)
+##     res
+## }
 
 ##' Retrieve an attachment from CouchDB document
 ##'
@@ -175,8 +180,11 @@ couch.get.attachment <- function(db=trackingdb,docname,attachment){
         db <- couch.makedbname(db)
     }
     couchdb <-  couch.get.url()
-    uri <- paste(couchdb,db,docname,attachment,sep="/")
-    uri=gsub("\\s","%20",x=uri,perl=TRUE)
+    uri <- paste(couchdb,db,
+               ## remove spaces in url or doc id
+               RCurl::curlEscape(docname),
+               RCurl::curlEscape(attachment),
+               sep="/");
 
     tmp <- tempfile(paste('remotedata',attachment,sep='_'))
 

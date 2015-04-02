@@ -27,14 +27,13 @@ couch.session <- function(h){
   authstring <- paste(paste('name',config$auth$username,sep='='),
                       paste('password',config$auth$password,sep='='),
                       sep='&')
-
-  RCurl::curlPerform(
+  r <- RCurl::curlPerform(
       url = uri
      ,customrequest = "POST"
      ,writefunction = reader$update
      ,postfields = authstring
      ,curl=h
      ,httpauth='ANY'
-              )
+      )
   rjson::fromJSON(reader$value())
 }
