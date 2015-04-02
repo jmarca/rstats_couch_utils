@@ -36,5 +36,5 @@ couch.session <- function(h){
      ,curl=h
      ,httpauth='ANY'
               )
-  rjson::fromJSON(reader$value(),simplify=FALSE)
+  rjson::fromJSON(reader$value())
 }
