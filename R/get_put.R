@@ -13,7 +13,7 @@ couch.post <- function(db,doc,h=RCurl::getCurlHandle()){
     db <- couch.makedbname(db)
   }
   couchdb <-  couch.get.url()
-  uri <- paste(couchdb,db,sep="/");
+  uri <- paste(couchdb,db,sep="/")
   couch_userpwd <- couch.get.authstring()
 
   reader = RCurl::basicTextGatherer()
@@ -212,8 +212,7 @@ couch.delete <- function(db,docname,doc=NULL,h=RCurl::getCurlHandle()){
   doc_rev <- NULL
   if(is.null(doc) || is.null(doc['_rev'])){
       ## do a head fetch to get the rev
-      doc.head <- couch.head(db,docname,h)
-      doc_rev <- gsub('\\"','',x=doc.head['ETag'],perl=TRUE)
+      doc_rev <- get.rev.from.head(db,docname,h)
   }else{
       doc_rev <- doc['_rev']
   }
@@ -241,6 +240,19 @@ couch.delete <- function(db,docname,doc=NULL,h=RCurl::getCurlHandle()){
   }
 
   RJSONIO::fromJSON(reader$value(),simplify=FALSE)
+}
+##' a convenience wrapper around the head call, above
+##'
+##' @title get.rev.from.head
+##' @param db the database name
+##' @param docname the document name
+##' @param h the current curl handle, or will gen a new one
+##' @return a string value of the current doc's revision
+##' @author James E. Marca
+get.rev.from.head <- function(db,docname,h=RCurl::getCurlHandle()){
+    doc.head <- couch.head(db,docname,h)
+    doc_rev <- gsub('\\"','',x=doc.head['ETag'],perl=TRUE)
+    doc_rev
 }
 
 couch.allDocs <- function(db, query, view='_all_docs',
