@@ -118,8 +118,8 @@ jsondump4old <- function(chunk){
   ## numeric.cols <- 1:35
   ## text.cols <- 36:37
 
-  num.data <- apply(chunk[,numeric.cols],1,toJSON)
-  text.data <- apply(chunk[,text.cols],1,toJSON)
+  num.data <- apply(chunk[,numeric.cols],1,rjson::toJSON)
+  text.data <- apply(chunk[,text.cols],1,rjson::toJSON)
   bulkdocs <- gsub('} {',',',x=paste(num.data,text.data,collapse=','),perl=TRUE)
   bulkdocs <- paste('{"docs":[',bulkdocs,']}')
   ## fix JSON:  too many spaces, NA handled wrong
@@ -144,12 +144,12 @@ jsondump4 <- function(chunk,bulk=TRUE){
   ## numeric.cols <- 1:35
   ## text.cols <- 36:37
 
-  num.data <- apply(chunk[,numeric.cols],1,toJSON)
+  num.data <- apply(chunk[,numeric.cols],1,rjson::toJSON)
   text.data <- list()
   if(length(text.cols) < 2){
-    text.data <- toJSON(chunk[,text.cols])
+    text.data <- rjson::toJSON(chunk[,text.cols])
   }else{
-    text.data <- apply(chunk[,text.cols],1,toJSON)
+    text.data <- apply(chunk[,text.cols],1,rjson::toJSON)
   }
   bulkdocs <- gsub('} {',',',x=paste(num.data,text.data,collapse=','),perl=TRUE)
   if(bulk){  bulkdocs <- paste('{"docs":[',bulkdocs,']}') }
@@ -175,6 +175,91 @@ jsondump5 <- function(chunk){
   bulkdocs <- gsub("[^,{}:]*:\\s*NA\\s*,"," "  ,x=bulkdocs  ,perl=TRUE)
   bulkdocs <- gsub("\\s+NA","null"  ,x=bulkdocs  ,perl=TRUE)
   bulkdocs
+}
+
+##' A rewrite of JSON dump 4
+##'
+##' @title jsondump6
+##' @param chunk an R thing
+##' @param bulk TRUE.  Not sure what else it might be, but if it is
+##' true then you get bulk doc semantics slapped to the front of the
+##' returned JSON string. If FALSE, then you don't.
+##' @return formatted JSON for submitting to CouchDB
+##' @author James E. Marca
+jsondump6 <- function(chunk,bulk=TRUE,text.cols,numeric.cols){
+    colnames <- names(chunk)
+
+    if(missing(text.cols)){
+        candiates <- colnames
+        if(!missing(numeric.cols)){
+            candidates <- setdiff(colnames,numeric.cols)
+        }
+        text.cols <- grep( pattern="^(_id|ts)$",
+                          x=candidates,perl=TRUE,value=TRUE)
+    }
+    if(missing(numeric.cols)){
+        candidates <- setdiff(colnames,text.cols)
+        numeric.cols <-  grep( pattern="^(_id|ts)$",
+                              x=candidates,
+                              perl=TRUE,invert=TRUE,value=TRUE)
+    }
+
+    other.cols <- setdiff(x=colnames,y=text.cols)
+    other.cols <- setdiff(x=other.cols,y=numeric.cols)
+
+    num.data <- json.chunklet(chunk,numeric.cols)
+    txt.data <- json.chunklet(chunk,text.cols)
+    oth.data <- json.chunklet(chunk,other.cols)
+
+    bulkdocs <- gsub('} {',',',x=paste(
+                                   num.data,
+                                   txt.data,
+                                   oth.data,
+                                   collapse=',')
+                    ,perl=TRUE)
+
+    if(bulk){  bulkdocs <- paste('{"docs":[',bulkdocs,']}') }
+    ## fix JSON:  too many spaces, NA handled wrong
+    ##  bulkdocs <- gsub("\\s+"," ",x=bulkdocs,perl=TRUE)
+    ## this next is needed again
+    ##  bulkdocs <- gsub("[^,{}:]*:\\s*NA\\s*,"," "  ,x=bulkdocs  ,perl=TRUE)
+    bulkdocs
+}
+
+##' apply rjson::toJSON to a subset of a dataframe, by rows
+##'
+##' I hate that stupid JSON tools in R work by column, not by row.  I
+##' want docs in couchdb by row.  So I need apply.  This does that
+##'
+##' The reason this exists is that the toJSON util will convert the
+##' input data into a list, and that conversion invariably will smush
+##' all the data to the same type.  So I am separating out text and
+##' numbers to avoid that, which means I either have lots of copy
+##' paste of this code, or a nice tidy function
+##'
+##' @title json.chunklet
+##' @param chunk some part of a dataframe
+##' @param names the dimension names that you want to write out as
+##' JSON records from the chunk.
+##' @return a list of JSON strings, one per row.
+##' @author James E. Marca
+json.chunklet <- function(chunk,names){
+    res <- NULL
+    if(length(names) == 1){
+        jsonarray <- NULL
+        for(i in 1:length(chunk[,names])){
+            jsonarray <- c(jsonarray,
+                           paste('{"',names,'":',
+                                 rjson::toJSON(chunk[i,names]),
+                                 '}',
+                                 sep='')
+                           )
+        }
+        res <- jsonarray
+    }else{
+        res <- apply(chunk[,names],1,rjson::toJSON)
+    }
+    res
 }
 
 

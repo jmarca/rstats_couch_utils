@@ -86,4 +86,32 @@ test_that("can retrieve all docs",{
 
 })
 
+test_that('bulk doc works',{
+
+    ## generate a lot of "sites"
+    grid <- NULL
+    for (gridx in 1:10){
+        for( gridy in 1:10 ){
+            ts <-  seq(from=as.POSIXct('2012-01-01'),
+                           to=as.POSIXct('2012-01-10'),
+                           by=3600)
+            grid <- rbind(grid,data.frame(x=gridx,y=gridy,ts=ts))
+        }
+
+    }
+    grid$id <- paste(grid$x,grid$y,grid$ts,sep='_')
+    grid$vol <- rnorm(length(grid$id),mean=200,sd=10)
+    grid$occ <- runif(length(grid$id))
+
+    ## that's 21,700 rows we can write
+
+    ## but let's not croak all at once!
+    couch.bulk.docs.save <- function(,
+                                 docdf,
+                                 chunksize=1000,
+                                 makeJSON=jsondump4){
+
+
+})
+
 couch.deletedb(parts)

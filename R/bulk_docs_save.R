@@ -251,17 +251,21 @@ nullTextGatherer <- function(txt = character(), max = NA, value = NULL)
 ##' @return 1, or die trying
 ##' @export
 ##' @author James E. Marca
-couch.bulk.docs.save <- function(db='default',
+couch.bulk.docs.save <- function(db,
                                  docdf,
                                  chunksize=1000,
-                                 makeJSON=jsondump4){
+                                 h=RCurl::getCurlHandle()){
+    couch.session(h)
     ## here I assume that docdf is a datafame
-
-    config <- read.config()
-
-    if(db == 'default'){
+    if(missing(db)){
         db <- config$trackingdb
     }
+    if(length(db)>1){
+        db <- couch.makedbname(db)
+    }
+    couchdb <-  couch.get.url()
+    ## the bulk docs target
+    uri <- paste(couchdb,db,'_bulk_docs',sep="/")
 
     ## push 1000 at a time
     i <- chunksize
@@ -270,9 +274,6 @@ couch.bulk.docs.save <- function(db='default',
 
     j <- 1
 
-
-    ## the bulk docs target
-    uri=paste(config$host,':',config$port,'/',db,'/','_bulk_docs',sep='')
 
     reader = nullTextGatherer()
 
@@ -285,8 +286,7 @@ couch.bulk.docs.save <- function(db='default',
         }
         ## for next iteration
         if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
-        bulkdocs <- makeJSON(chunk)
-        h = getCurlHandle()
+        bulkdocs <- (chunk)
         curlresult <- try( curlPerform(
             url = uri
            ,httpheader = c('Content-Type'='application/json')
@@ -300,6 +300,7 @@ couch.bulk.docs.save <- function(db='default',
             print ("\n Error saving to couchdb, trying again \n")
             rm(h)
             h = getCurlHandle()
+            couch.session(h)
             curlPerform(
                 url = uri
                ,httpheader = c('Content-Type'='application/json')
