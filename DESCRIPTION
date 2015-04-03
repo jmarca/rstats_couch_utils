@@ -8,4 +8,5 @@ License: GPLv2
 LazyData: true
 Suggests: testthat
 Imports: RCurl,
-    RJSONIO
+    plyr,
+    rjson

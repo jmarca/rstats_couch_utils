@@ -132,9 +132,9 @@ couch.allDocsPost <- function(db,
         q <- 'include_docs=true'
     }
 
-    if(is.null(names(keys))){
+    if(is.null(names(keys))||length(names(keys)) == 1){
         ## in this case, just pass as keys
-        thekeys <- rjson::toJSON(keys)
+        thekeys <- rjson::toJSON(keys[[names(keys)]])
         k <- paste('{"keys":',thekeys,'}',sep='')
     }else{
         ## split keys as body json, others as params
@@ -247,7 +247,7 @@ nullTextGatherer <- function(txt = character(), max = NA, value = NULL)
 ##' the config file
 ##' @param docdf the document to save, as a dataframe
 ##' @param chunksize defaults to 1000.  How many docs to write at a time
-##' @param makeJSON a function to use to create JSON
+##' @param h an RCurl handle, or not (will create one)
 ##' @return 1, or die trying
 ##' @export
 ##' @author James E. Marca
@@ -256,12 +256,33 @@ couch.bulk.docs.save <- function(db,
                                  chunksize=1000,
                                  h=RCurl::getCurlHandle()){
     couch.session(h)
+
+    ## in case there are existing docs, have to first fetch all the doc revisions
+    varnames <- names(docdf)
+    existing_docs <- NULL
+    if('_id' %in% varnames){
+        ## fetch the corresponding revisions and insert now
+        id_rev <- couch.allDocsPost(db,keys=docdf['_id'],include.docs=FALSE,h=h)
+        found <- plyr::ldply(id_rev$rows,function(r){
+            ## print('processing in llply')
+            if(!is.null(r$error)){
+                return (NULL)
+            }
+            data.frame('_id'=r$key,'_rev'=r$value$rev)
+        })
+        if(!is.na(dim(found)) && dim(found)[1]>0){
+            colnames(found) <- c('_id','_rev')
+            docdf <- merge(docdf,found,all=TRUE)
+        }
+    }
+
     ## here I assume that docdf is a datafame
     if(missing(db)){
         db <- config$trackingdb
-    }
-    if(length(db)>1){
-        db <- couch.makedbname(db)
+    }else{
+        if(length(db)>1){
+            db <- couch.makedbname(db)
+        }
     }
     couchdb <-  couch.get.url()
     ## the bulk docs target
@@ -274,19 +295,30 @@ couch.bulk.docs.save <- function(db,
 
     j <- 1
 
+    docspushed <- 0
 
     reader = nullTextGatherer()
+    ## reader <- basicTextGatherer()
+
+    ## sort columns into numeric and text
+    num.cols <-  unlist(plyr::llply(docdf[1,],is.numeric))
+    txt.cols <- unlist(plyr::llply(docdf[1,],is.character))
+    oth.cols <- ! (num.cols | txt.cols)
+    num.cols <- varnames[num.cols]
+    txt.cols <- varnames[txt.cols]
+    oth.cols <- varnames[oth.cols]
 
     while(length(docdf)>0) {
         chunk <- docdf[j:i,]
-        if( i == length(docdf[,1]) ){
+        if( i >= length(docdf[,1]) ){
             docdf <- data.frame()
         }else{
             docdf <- docdf[-j:-i,]
         }
         ## for next iteration
         if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
-        bulkdocs <- (chunk)
+        bulkdocs <- jsondump6(chunk,num.cols=num.cols,txt.cols=txt.cols,oth.cols=oth.cols)
+        ## print(bulkdocs)
         curlresult <- try( curlPerform(
             url = uri
            ,httpheader = c('Content-Type'='application/json')
@@ -310,9 +342,10 @@ couch.bulk.docs.save <- function(db,
                ,curl = h
                 )
         }
+        docspushed <- docspushed + length(chunk[,1])
     }
-    gc()
-    1
+    # print(reader$value())
+    docspushed
 }
 
 

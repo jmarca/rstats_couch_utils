@@ -99,18 +99,29 @@ test_that('bulk doc works',{
         }
 
     }
-    grid$id <- paste(grid$x,grid$y,grid$ts,sep='_')
-    grid$vol <- rnorm(length(grid$id),mean=200,sd=10)
-    grid$occ <- runif(length(grid$id))
+    grid$vol <- rnorm(length(grid[,1]),mean=200,sd=10)
+    grid$occ <- runif(length(grid[,1]))
+    grid[,'_id'] <- paste(grid$x,grid$y,grid$ts,sep='_')
 
     ## that's 21,700 rows we can write
 
     ## but let's not croak all at once!
-    couch.bulk.docs.save <- function(,
-                                 docdf,
-                                 chunksize=1000,
-                                 makeJSON=jsondump4){
+    res <- couch.bulk.docs.save(parts,head(grid))
+    ## print (res)
+    expect_that(res,equals(length(head(grid[,1]))))
 
+    ## And it also works with duplicate docs.
+
+    res <- couch.bulk.docs.save(parts,head(grid))
+    expect_that(res,equals(length(head(grid[,1]))))
+
+    ## bigger chunk, have already in, half not
+    res <- couch.bulk.docs.save(parts,grid[1:10,])
+    expect_that(res,equals(10))
+
+    ## and the rest.  choke on that, CouchDB!
+    res <- couch.bulk.docs.save(parts,grid)
+    expect_that(res,equals(length(grid[,1])))
 
 })
 

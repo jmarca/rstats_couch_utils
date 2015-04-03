@@ -179,50 +179,101 @@ jsondump5 <- function(chunk){
 
 ##' A rewrite of JSON dump 4
 ##'
+##' Added the idea of splitting up the columns more formally.  I was
+##' dead-reckoning before based on knowledge of the input set; now
+##' there are parameters.  And in the parent call I run actual code to
+##' identify is.character, is.numeric and other on the columns.
+##'
+##' If you do not supply the number, text columns, I'll do the test
+##' locally.  Just not so efficient if you're dumping lots and lots of
+##' data to keep re-running it
+##'
+##' As an example, if you pass in:
+##'
+##'   x y                  ts                      id      vol         occ
+##'   1 1 2012-01-01 00:00:00 1_1_2012-01-01 00:00:00 218.5119 0.406479106
+##'   1 1 2012-01-01 01:00:00 1_1_2012-01-01 01:00:00 212.3248 0.180804537
+##'   1 1 2012-01-01 02:00:00 1_1_2012-01-01 02:00:00 184.5133 0.009357087
+##'   1 1 2012-01-01 03:00:00 1_1_2012-01-01 03:00:00 190.6849 0.507734750
+##'   1 1 2012-01-01 04:00:00 1_1_2012-01-01 04:00:00 203.3100 0.337674281
+##'   1 1 2012-01-01 05:00:00 1_1_2012-01-01 05:00:00 192.3677 0.671313804
+##'
+##'
+##' you will get out:
+##'
+##' {"x":1,"y":1,"vol":218.511945384685,"occ":0.406479105586186,"id":"1_1_2012-01-01 00:00:00","ts":1325404800},
+##' {"x":1,"y":1,"vol":212.32483922734,"occ":0.180804537376389,"id":"1_1_2012-01-01 01:00:00","ts":1325408400},
+##' {"x":1,"y":1,"vol":184.513335562672,"occ":0.00935708731412888,"id":"1_1_2012-01-01 02:00:00","ts":1325412000},
+##' {"x":1,"y":1,"vol":190.684859753449,"occ":0.507734750164673,"id":"1_1_2012-01-01 03:00:00","ts":1325415600},
+##' {"x":1,"y":1,"vol":203.310037103563,"occ":0.337674280628562,"id":"1_1_2012-01-01 04:00:00","ts":1325419200},
+##' {"x":1,"y":1,"vol":192.367654353324,"occ":0.671313803875819,"id":"1_1_2012-01-01 05:00:00","ts":1325422800}
+##'
+##' Notice the number columns 'x', 'y', 'vol', and 'occ' are kept as
+##' numbers, not text, while "id" is converted to text.  The time
+##' column 'ts' is neither numeric nor character, so it gets processed
+##' independently, and ends up being converted to seconds since the
+##' epoch.  If you don't want that, then be careful coming in (like
+##' specify that it is character, or be careful about the
+##' representation of timezone, etc)
+##'
 ##' @title jsondump6
 ##' @param chunk an R thing
 ##' @param bulk TRUE.  Not sure what else it might be, but if it is
 ##' true then you get bulk doc semantics slapped to the front of the
 ##' returned JSON string. If FALSE, then you don't.
+##' @param num.cols a list of number columns in chunk (either
+##' positions or names, going to subset by them as in
+##' chunk[,num.cols])
+##' @param txt.cols a list of text columns
+##' @param oth.cols a list of columns that are neither text nor number
+##' or that you otherwise want to hold out separate when cranking out
+##' JSON
 ##' @return formatted JSON for submitting to CouchDB
 ##' @author James E. Marca
-jsondump6 <- function(chunk,bulk=TRUE,text.cols,numeric.cols){
+jsondump6 <- function(chunk,bulk=TRUE,num.cols,txt.cols,oth.cols){
     colnames <- names(chunk)
-
-    if(missing(text.cols)){
-        candiates <- colnames
-        if(!missing(numeric.cols)){
-            candidates <- setdiff(colnames,numeric.cols)
+    if(missing(num.cols)){
+        ## sort columns into numeric and text
+        num.cols <-  unlist(plyr::llply(chunk[1,],is.numeric))
+        num.cols <- colnames[num.cols]
+    }else{
+        if(is.numeric(num.cols[1])){
+            num.cols <- colnames[num.cols]
         }
-        text.cols <- grep( pattern="^(_id|ts)$",
-                          x=candidates,perl=TRUE,value=TRUE)
     }
-    if(missing(numeric.cols)){
-        candidates <- setdiff(colnames,text.cols)
-        numeric.cols <-  grep( pattern="^(_id|ts)$",
-                              x=candidates,
-                              perl=TRUE,invert=TRUE,value=TRUE)
+    if(missing(txt.cols)){
+        txt.cols <- unlist(plyr::llply(chunk[1,],is.character))
+        txt.cols <- colnames[txt.cols]
+    }else{
+        if(is.numeric(txt.cols[1])){
+            txt.cols <- colnames[txt.cols]
+        }
     }
 
-    other.cols <- setdiff(x=colnames,y=text.cols)
-    other.cols <- setdiff(x=other.cols,y=numeric.cols)
+    oth.cols <- setdiff(x=colnames,y=c(txt.cols,num.cols))
 
-    num.data <- json.chunklet(chunk,numeric.cols)
-    txt.data <- json.chunklet(chunk,text.cols)
-    oth.data <- json.chunklet(chunk,other.cols)
+    num.data <- json.chunklet(chunk,num.cols)
+    txt.data <- json.chunklet(chunk,txt.cols)
+    json_str <- paste(num.data,
+                      txt.data,
+                      collapse=',')
+    if(!is.null(oth.cols) && length(oth.cols)>0){
+        oth.data <- json.chunklet(chunk,oth.cols)
+        json_str <- paste(num.data,
+                          txt.data,
+                          oth.data,
+                          collapse=',')
+    }
 
-    bulkdocs <- gsub('} {',',',x=paste(
-                                   num.data,
-                                   txt.data,
-                                   oth.data,
-                                   collapse=',')
-                    ,perl=TRUE)
+    bulkdocs <- gsub('} {',',',x=json_str,perl=TRUE)
 
     if(bulk){  bulkdocs <- paste('{"docs":[',bulkdocs,']}') }
     ## fix JSON:  too many spaces, NA handled wrong
     ##  bulkdocs <- gsub("\\s+"," ",x=bulkdocs,perl=TRUE)
-    ## this next is needed again
-    ##  bulkdocs <- gsub("[^,{}:]*:\\s*NA\\s*,"," "  ,x=bulkdocs  ,perl=TRUE)
+
+    ## this next is needed because NA is not valid JSON
+    ## bulkdocs <- gsub("[,?{}:]*:\\s*NA\\s*,"," "  ,x=bulkdocs  ,perl=TRUE)
+
     bulkdocs
 }
 
@@ -248,16 +299,22 @@ json.chunklet <- function(chunk,names){
     if(length(names) == 1){
         jsonarray <- NULL
         for(i in 1:length(chunk[,names])){
-            jsonarray <- c(jsonarray,
-                           paste('{"',names,'":',
-                                 rjson::toJSON(chunk[i,names]),
-                                 '}',
-                                 sep='')
-                           )
+            if(is.na(chunk[i,names])){
+                jsonarray <- c(jsonarray,'{}')
+            }else{
+                jsonarray <- c(jsonarray,
+                               paste('{"',names,'":',
+                                     rjson::toJSON(chunk[i,names]),
+                                     '}',
+                                     sep='')
+                               )
+            }
         }
         res <- jsonarray
     }else{
         res <- apply(chunk[,names],1,rjson::toJSON)
+        res <- gsub('"[^\\"]*?":"NA",?',"",x=res,perl=TRUE)
+        res <- gsub(',}',"}",x=res,perl=TRUE)
     }
     res
 }
