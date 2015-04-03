@@ -347,32 +347,3 @@ couch.bulk.docs.save <- function(db,
     # print(reader$value())
     docspushed
 }
-
-
-##' couch bulk docs saver for district, year, vdsid
-##'
-##' wraps a call to couch.bulk.docs.save.  Creates the right db name
-##' from the passed district, year, and vdsid
-##'
-##' @param district
-##' @param year
-##' @param vdsid
-##' @param docdf the document to save, as a dataframe
-##' @param local cruft, ignore, but kept for backwards compatibility
-##' @param chunksize defaults to 1000.  How many docs to write at a time
-##' @param db the database to save into.  Default to whatever is in
-##' the config file
-##' @param makeJSON a function to use to create JSON
-##' @return 1, or die trying
-##' @export
-##' @author James E. Marca
-couch.async.bulk.docs.save <- function(district,
-                                       year,
-                                       vdsid,
-                                       docdf,
-                                       local=TRUE,
-                                       chunksize=1000){
-
-    db <- couch.makedbname(c(district,year,vdsid))
-    couch.bulk.docs.save(db=db,docdf=docdf,local=local,chunksize=chunksize)
-}
