@@ -1,5 +1,10 @@
-
-couch.makedb <- function( db, local=TRUE ){
+##' make a new couchdb
+##'
+##' @title couch.makedb
+##' @param db the db name
+##' @return the JSON response from the CouchDB server, as a list
+##' @author James E. Marca
+couch.makedb <- function( db){
 
     if(length(db)>1){
         db <- couch.makedbname(db)
@@ -27,16 +32,13 @@ couch.makedb <- function( db, local=TRUE ){
 
 ##' Delete a CouchDB database
 ##'
+##' This is what you use to delete a couchdb database.  I usually just
+##' use it to clean up after tests, but maybe you want a temporary db
+##' during an analysis or somethign
+##'
 ##' @title couch.deletedb
-##' @param db the database name to delete.  If you pass a plain
-##' string, then it is your responsibility to make sure to escape the
-##' / to be %2f.  However, the advantage is that you bypass my
-##' namespacing db naming thing.  If you *want* the database
-##' namespacing trick, then pass in a vector of name parts, like
-##' c('my','current','database') and it wil be passed to the
-##' \code{\link{couch.makedbname}} function, where the current value
-##' of \code{config.dbname} will be prepended to the list, giving you
-##' a database name like "vdsdata%2fmy%2fcurrent%2fdatabase"
+##' @param db the database name to delete.  If a list, it will get
+##' passed into couch.makedbname to make into a proper db name.
 ##' @return it will either delete the database, or curl will crash
 ##' @export
 ##' @author James E. Marca

@@ -120,4 +120,29 @@ test_that("can set and check state",{
     expect_that(state.check,equals('todo'))
 
 })
+
+test_that("can get db info",{
+    res <- get.db(parts)
+
+    expect_that(res,is_a('list'))
+    resnames <-  sort(names(res))
+    api_names <- sort(c(
+        'committed_update_seq',
+        'compact_running',
+        'db_name',
+        'disk_format_version',
+        'data_size',
+        'disk_size',
+        'doc_count',
+        'doc_del_count',
+        'instance_start_time',
+        'purge_seq',
+        'update_seq'
+        ))
+
+    expect_that(resnames,equals(api_names
+        ))
+    expect_that(res$db_name,equals(couch.makedbname.noescape(parts)))
+
+})
 couch.deletedb(parts)

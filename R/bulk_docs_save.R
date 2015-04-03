@@ -197,9 +197,9 @@ couch.allDocsPost <- function(db,
 ##' it. This one simply cumulates it and makes it available via a
 ##' second function.
 ##'
-##' @param txt
-##' @param max
-##' @param value
+##' @param txt some txt
+##' @param max the max.  Oh my.  send money by wire.
+##' @param value the value of it all is without Nigerian priceless
 ##' @return a null text gatherer function for RCurl invocation
 ##' @author James E. Marca
 nullTextGatherer <- function(txt = character(), max = NA, value = NULL)

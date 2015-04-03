@@ -1,5 +1,7 @@
 ##' Checkout a detector for processing
 ##'
+##' deprecated.  will throw if used
+##'
 ##' This enables a sort of multi-machine communication of jobs.  In
 ##' practice it doesn't work so well, so I've moved away from it, but
 ##' the idea is to "check out" a detector by setting a state of a
@@ -29,8 +31,11 @@
 ##' @author James E. Marca
 couch.checkout.for.processing <- function(district,year,vdsid,
                                           process,state='inprocess',
-                                          local=TRUE, force=FALSE,
-                                          db=trackingdb){
+                                          force=FALSE,
+                                          db){
+    if(1){
+        stop()
+    }
   result <- 'done' ## default to done
   statusdoc = couch.get(db,vdsid,local=local)
   fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
@@ -131,8 +136,11 @@ jsondump4old <- function(chunk){
 
 ##' A custom JSON dumper that fixes some of the irritants of rjson::toJSON
 ##'
+##' deprecated
+##'
 ##' @title jsondump4
 ##' @param chunk an R thing
+##' @param bulk a parameter indicating whether you want couchdb bulkdoc semantics.
 ##' @return formatted JSON for submitting to CouchDB
 ##' @author James E. Marca
 jsondump4 <- function(chunk,bulk=TRUE){

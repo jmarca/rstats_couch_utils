@@ -249,6 +249,46 @@ get.rev.from.head <- function(db,docname,h=RCurl::getCurlHandle()){
     doc_rev
 }
 
+##' a convenience for poking a database
+##'
+##' gets information about the database.  from the couchdb docs:
+##'
+##' Response JSON Object:
+##'
+##' \describe{
+##'     \item{committed_update_seq (number)}{ The number of committed update.}
+##'     \item{compact_running (boolean)}{ Set to true if the database compaction routine is operating on this database.}
+##'     \item{db_name (string)}{ The name of the database.}
+##'     \item{disk_format_version (number)}{ The version of the physical format used for the data when it is stored on disk.}
+##'     \item{data_size (number)}{ Actual data size in bytes of the database data.}
+##'     \item{disk_size (number)}{ Size in bytes of the data as stored on the disk. Views indexes are not included in the calculation.}
+##'     \item{doc_count (number)}{ A count of the documents in the specified database.}
+##'     \item{doc_del_count (number)}{ Number of deleted documents}
+##'     \item{instance_start_time (string)}{ Timestamp of when the database was opened, expressed in microseconds since the epoch.}
+##'     \item{purge_seq (number)}{ The number of purge operations on the database.}
+##'     \item{update_seq (number)}{ The current number of updates to the database.}
+##' }
+##'
+##' @title get.db
+##' @param db the database name
+##' @param h the current curl handle, or will gen a new one
+##' @return the converted JSON status of the database
+##' @author James E. Marca
+get.db <- function(db,h=RCurl::getCurlHandle()){
+  if(length(db)>1){
+    db <- couch.makedbname(db)
+  }
+  couchdb <-  couch.get.url()
+  uri <- paste(couchdb,db,sep="/")
+
+  res <- rjson::fromJSON(
+      RCurl::getURL(uri,curl=h)[[1]]
+      )
+
+  res
+}
+
+
 
 ##' Set state to a passed in document (a list), which is more robust
 ##' that the dumb checkout for processing version in couchUtils.R
