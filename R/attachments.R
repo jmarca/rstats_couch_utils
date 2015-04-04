@@ -17,6 +17,7 @@ library(RCurl) ## need to do this for mimeTypeExtensions
 ##' @param h an existing RCurl handle.  will create one if not passed in
 ##' @return the result of attaching.  Hopefully a JSON object that
 ##' says okay
+##' @export
 ##' @author James E. Marca
 couch.attach <- function(db=trackingdb,
                          docname,
@@ -49,16 +50,16 @@ couch.attach <- function(db=trackingdb,
 
     reader = RCurl::basicTextGatherer()
     f <- RCurl::CFILE(filename=attfile)
-    res <- curlPerform(url = uri,
-                       customrequest='PUT',
-                       upload = TRUE,
-                       writefunction = reader$update,
-                       readdata = f@ref,
-                       infilesize = file.info(attfile)[1, "size"],
-                       httpheader = c('Content-Type'=content.type[[1]]),
-                       curl=h
-                      ##,verbose=TRUE
-                       )
+    res <- RCurl::curlPerform(url = uri,
+                              customrequest='PUT',
+                              upload = TRUE,
+                              writefunction = reader$update,
+                              readdata = f@ref,
+                              infilesize = file.info(attfile)[1, "size"],
+                              httpheader = c('Content-Type'=content.type[[1]]),
+                              curl=h
+                              ##,verbose=TRUE
+                              )
 
     rjson::fromJSON(reader$value())
 

@@ -3,6 +3,7 @@
 ##' @title couch.makedb
 ##' @param db the db name
 ##' @return the JSON response from the CouchDB server, as a list
+##' @export
 ##' @author James E. Marca
 couch.makedb <- function( db){
 

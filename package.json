@@ -1,7 +1,7 @@
 {
-  "name": "rstats_couch_utils",
+  "name": "rcouchutils",
   "version": "0.1.0",
-  "description": "An R program for interacting with CouchDB, with tests that require node packages",
+  "description": "An R package for interacting with CouchD.  Some tests that require node packages.  The tests in tests use R",
   "main": "R/couchUtils.R",
   "directories": {
     "test": "test"

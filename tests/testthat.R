@@ -1,2 +1,3 @@
 library(testthat)
-test_check("rcouchutils")
+
+test_package("rcouchutils")

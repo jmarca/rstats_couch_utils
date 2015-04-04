@@ -37,6 +37,7 @@ config <- NULL
 ##'
 ##' @title read.config
 ##' @return the config file, as an R object, but only the couchdb part
+##' @export
 ##' @author James E. Marca
 get.config <- function(){
     if(is.null(config)){
@@ -85,6 +86,7 @@ get.config <- function(){
 ##'
 ##' @title couch.get.url
 ##' @return a URL to couchdb
+##' @export
 ##' @author James E. Marca
 couch.get.url <- function(){
     config <- get.config()

@@ -50,9 +50,9 @@ couch.allDocs <- function(db, query, view='_all_docs',
         q <- paste(q,'include_docs=true',sep='&')
     }
     uri <- paste(uri,q,sep='?')
-    reader <- basicTextGatherer()
+    reader <- RCurl::basicTextGatherer()
     if(is.null(couch_userpwd)){
-        curlPerform(
+        RCurl::curlPerform(
             url = uri
            ,customrequest = "GET"
            ,httpheader = c('Content-Type'='application/json')
@@ -60,7 +60,7 @@ couch.allDocs <- function(db, query, view='_all_docs',
            ,curl=h
             )
     }else{
-        curlPerform(
+        RCurl::curlPerform(
             url = uri
            ,customrequest = "GET"
            ,httpheader = c('Content-Type'='application/json')
@@ -113,10 +113,10 @@ couch.allDocsPost <- function(db,
                               keys,
                               view='_all_docs',
                               include.docs = TRUE,
-                              h=getCurlHandle()){
+                              h=RCurl::getCurlHandle()){
     ## bounce over to the GET version if keys isn't passed in
     if(missing(keys)){
-        return (couch.allDocs(db,view=view,include.docs=include.docs,h=h))
+        return (couch.allDocs(db,view=view,include.docs=include.docs))
     }
 
     if(length(db)>1){
@@ -159,9 +159,9 @@ couch.allDocsPost <- function(db,
         }
     }
     uri <- paste(uri,q,sep='?')
-    reader <- basicTextGatherer()
+    reader <- RCurl::basicTextGatherer()
     if(is.null(couch_userpwd)){
-        curlPerform(
+        RCurl::curlPerform(
             url = uri
            ,customrequest = "POST"
            ,httpheader = c('Content-Type'='application/json')
@@ -170,7 +170,7 @@ couch.allDocsPost <- function(db,
            ,curl=h
             )
     }else{
-        curlPerform(
+        RCurl::curlPerform(
             url = uri
            ,customrequest = "POST"
            ,httpheader = c('Content-Type'='application/json')
@@ -300,7 +300,10 @@ couch.bulk.docs.save <- function(db,
     docspushed <- 0
 
     reader = nullTextGatherer()
-    ## reader <- basicTextGatherer()
+
+    ## for debugging, use the following, but it fills up for nothing
+    ## if you're dumping thousands of docs
+    ## reader <- RCurl::basicTextGatherer()
 
     ## sort columns into numeric and text
     num.cols <-  unlist(plyr::llply(docdf[1,],is.numeric))
@@ -321,7 +324,7 @@ couch.bulk.docs.save <- function(db,
         if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
         bulkdocs <- jsondump6(chunk,num.cols=num.cols,txt.cols=txt.cols,oth.cols=oth.cols)
         ## print(bulkdocs)
-        curlresult <- try( curlPerform(
+        curlresult <- try( RCurl::curlPerform(
             url = uri
            ,httpheader = c('Content-Type'='application/json')
            ,customrequest = "POST"
@@ -333,9 +336,9 @@ couch.bulk.docs.save <- function(db,
         if(class(curlresult) == "try-error"){
             print ("\n Error saving to couchdb, trying again \n")
             rm(h)
-            h = getCurlHandle()
+            h = RCurl::getCurlHandle()
             couch.session(h)
-            curlPerform(
+            RCurl::curlPerform(
                 url = uri
                ,httpheader = c('Content-Type'='application/json')
                ,customrequest = "POST"

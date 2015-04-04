@@ -36,33 +36,33 @@ couch.checkout.for.processing <- function(district,year,vdsid,
     if(1){
         stop()
     }
-  result <- 'done' ## default to done
-  statusdoc = couch.get(db,vdsid,local=local)
-  fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
-  if( (fieldcheck[1] && statusdoc['error'] == "not_found") ){
-    result = 'todo'
-    statusdoc = list() ## R doesn't interpolate variables in statements like list(process='state')
-    statusdoc[paste(year)]=list()
-    statusdoc[[paste(year)]][[process]]=state
-    putstatus <- fromJSON(couch.put(db,vdsid,statusdoc,local=local))
-    fieldcheck <- c('error') %in% names(putstatus)
-    if(fieldcheck[1]){
-      result <- 'error'
-    }
+  ## result <- 'done' ## default to done
+  ## statusdoc = couch.get(db,vdsid,local=local)
+  ## fieldcheck <- c('error',process) %in% names(statusdoc[[paste(year)]])
+  ## if( (fieldcheck[1] && statusdoc['error'] == "not_found") ){
+  ##   result = 'todo'
+  ##   statusdoc = list() ## R doesn't interpolate variables in statements like list(process='state')
+  ##   statusdoc[paste(year)]=list()
+  ##   statusdoc[[paste(year)]][[process]]=state
+  ##   putstatus <- fromJSON(couch.put(db,vdsid,statusdoc,local=local))
+  ##   fieldcheck <- c('error') %in% names(putstatus)
+  ##   if(fieldcheck[1]){
+  ##     result <- 'error'
+  ##   }
 
-  }else if( !fieldcheck[2] ||  statusdoc[[paste(year)]][[process]] == 'todo' || force ){
-    result = 'todo'
-    statusdoc[[paste(year)]][[process]]=state
-    putstatus <- fromJSON(couch.put(db,vdsid,statusdoc,local=local))
-    fieldcheck <- c('error') %in% names(putstatus)
-    if(fieldcheck[1]){
-      result <- 'error'
-    }
-  }else{
-    ## have status doc, process field, but not in 'todo' state, so report what state it is in
-    result = statusdoc[[paste(year)]][[process]]
-  }
-  result
+  ## }else if( !fieldcheck[2] ||  statusdoc[[paste(year)]][[process]] == 'todo' || force ){
+  ##   result = 'todo'
+  ##   statusdoc[[paste(year)]][[process]]=state
+  ##   putstatus <- fromJSON(couch.put(db,vdsid,statusdoc,local=local))
+  ##   fieldcheck <- c('error') %in% names(putstatus)
+  ##   if(fieldcheck[1]){
+  ##     result <- 'error'
+  ##   }
+  ## }else{
+  ##   ## have status doc, process field, but not in 'todo' state, so report what state it is in
+  ##   result = statusdoc[[paste(year)]][[process]]
+  ## }
+  ## result
 }
 
 #########
