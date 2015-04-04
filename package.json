@@ -1,17 +1,17 @@
 {
-  "name": "rstats_couch_utils",
+  "name": "rcouchutils",
   "version": "0.1.0",
-  "description": "An R program for interacting with CouchDB, with tests that require node packages",
-  "main": "index.js",
+  "description": "An R package for interacting with CouchD.  Some tests that require node packages.  The tests in tests use R",
+  "main": "R/couchUtils.R",
   "directories": {
     "test": "test"
   },
   "dependencies": {},
   "devDependencies": {
-    "async": "~0.2.7",
-    "lodash": "~1.1.1",
-    "should": "~1.2.2",
-    "superagent": "~0.14.1"
+    "async": "",
+    "lodash": "",
+    "should": "",
+    "request": ""
   },
   "scripts": {
     "test": "mocha"

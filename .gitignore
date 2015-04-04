@@ -1,1 +1,7 @@
 *~
+test.config.json
+config.json
+/man/
+/node_modules/
+/.Rhistory
+**/.cookies.txt
