@@ -22,8 +22,9 @@ couch.attach <- function(db=trackingdb,
                          docname,
                          attfile,
                          h=RCurl::getCurlHandle()){
-
-    couch.session(h)
+    if(missing(h)){
+        couch.session(h)
+    }
 
     file.path <- unlist(strsplit(attfile,"/"))
     flen <- length(file.path)

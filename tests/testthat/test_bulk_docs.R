@@ -120,6 +120,9 @@ test_that('bulk doc works',{
     expect_that(res,equals(10))
 
     ## and the rest.  choke on that, CouchDB!
+    print(paste('stand by for big bulk_docs save of ',
+                length(grid[,1]),
+                'documents'))
     res <- couch.bulk.docs.save(parts,grid)
     expect_that(res,equals(length(grid[,1])))
 

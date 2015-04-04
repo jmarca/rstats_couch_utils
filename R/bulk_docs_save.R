@@ -15,13 +15,13 @@
 ##' not to download the document content, or to just get a list of the
 ##' doc ids and revisions.  CouchDB offers both choices.  In no case
 ##' will this function download attachments as well
-##' @param h an RCurl handle, will default to getting anew one.
 ##' @return the result of the query, parsed into R lists or whatnot
 ##' @author James E. Marca
 couch.allDocs <- function(db, query, view='_all_docs',
-                          include.docs = TRUE,
-                          h=RCurl::getCurlHandle()){
+                          include.docs = TRUE
+                          ){
 
+    h=RCurl::getCurlHandle()
 
     if(length(db)>1){
         db <- couch.makedbname(db)
@@ -255,7 +255,9 @@ couch.bulk.docs.save <- function(db,
                                  docdf,
                                  chunksize=1000,
                                  h=RCurl::getCurlHandle()){
-    couch.session(h)
+    if(missing(h)){
+        res <- couch.session(h)
+    }
 
     ## in case there are existing docs, have to first fetch all the doc revisions
     varnames <- names(docdf)

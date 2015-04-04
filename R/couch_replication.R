@@ -41,24 +41,26 @@ couch.start.replication <- function(src,tgt,
 
     h = RCurl::getCurlHandle()
     res <- couch.session(h)
+    config <- get.config()
 
     doc = list("source" = src
        ,"target" = tgt
        ,"create_target" = create_target
        ,"continuous" = continuous
-       ,"user_ctx" = list( "name"=res$name, "roles"=res$roles )
+       ,"user_ctx" = list( "name"=config$auth$username, "roles"=list(res$roles) )
                )
+    ## if you aren't authorized, you can't do create type replications
     if(!is.null(id)){
-        current <- couch.delete('_replicator',id,h=h)
+        current <- couch.delete('_replicator',id)
     }
-    print(paste("setting up replication doc:\n",rjson::toJSON(doc)))
-    result='ok'
+    ## print(paste("setting up replication doc:\n",rjson::toJSON(doc)))
+    return <- NULL
     if(is.null(id)){
         ## no id, use post
         result <-
             couch.post('_replicator'
                       ,doc
-                      ,h=h
+                       ,h=h
                        )
 
     }else{

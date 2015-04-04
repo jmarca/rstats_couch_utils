@@ -13,27 +13,34 @@
 ##' @return the result of setting up the session
 ##' @author James E. Marca
 couch.session <- function(h){
-  RCurl::curlSetOpt(cookiejar='.cookies.txt', curl=h)
-  couchdb <- couch.get.url()
-  uri <- paste(couchdb,"_session",sep="/")
-  reader = RCurl::basicTextGatherer()
-  config <-  get.config()
-  if(is.null(config$auth) ||
-     is.null(config$auth$username) ||
-     is.null(config$auth$password)){
-      ## canna do nae
-      return(NULL)
-  }
-  authstring <- paste(paste('name',config$auth$username,sep='='),
-                      paste('password',config$auth$password,sep='='),
-                      sep='&')
-  r <- RCurl::curlPerform(
-      url = uri
-     ,customrequest = "POST"
-     ,writefunction = reader$update
-     ,postfields = authstring
-     ,curl=h
-     ,httpauth='ANY'
-      )
-  rjson::fromJSON(reader$value())
+    jar <- ".cookies.txt"## tempfile(pattern='cookies.txt')
+    RCurl::curlSetOpt(cookiejar=jar, curl=h)
+    couchdb <- couch.get.url()
+    uri <- paste(couchdb,"_session",sep="/")
+    reader = RCurl::basicTextGatherer()
+    config <-  get.config()
+    if(is.null(config$auth) ||
+       is.null(config$auth$username) ||
+       is.null(config$auth$password)){
+        ## canna do nae
+        return(NULL)
+    }
+    authstring <- paste(paste('name',config$auth$username,sep='='),
+                        paste('password',config$auth$password,sep='='),
+                        sep='&')
+    r <- RCurl::curlPerform(
+        url = uri
+       ,customrequest = "POST"
+       ,writefunction = reader$update
+       ,postfields = authstring
+       ,curl=h
+       ,httpauth='ANY'
+        )
+    response <-  reader$value()
+    if(!is.null(response)){
+        return(rjson::fromJSON(response))
+
+    }
+    response
+
 }

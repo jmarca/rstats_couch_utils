@@ -174,7 +174,11 @@ couch.put <- function(db,docname,doc,h=RCurl::getCurlHandle(),dumper=jsondump5){
           )
 
   }
-  rjson::fromJSON(reader$value())
+  response <-  reader$value()
+  if(!is.null(response) && response != ''){
+      response <- rjson::fromJSON(response)
+  }
+  response
 }
 
 ##' Delete a named document from couchdb database.
@@ -188,52 +192,56 @@ couch.put <- function(db,docname,doc,h=RCurl::getCurlHandle(),dumper=jsondump5){
 ##' db.  However, if the revision in your doc is out of date, then the
 ##' delete will fail.  This can be good or bad, depending on your
 ##' point of view.
-##' @param h a curl handle, if you have a persistent one
-##' @return the response from couchdb.  Probably okay or not okay kind
-##' of thing, parsed JSON
+##' @return 1 if delete was successful or the doc was not found, 0
+##' otherwise.  So zero is bad, 1 is good
 ##' @export
 ##' @author James E. Marca
-couch.delete <- function(db,docname,doc=NULL,h=RCurl::getCurlHandle()){
+couch.delete <- function(db,docname,doc=NULL){
 
-  if(length(db)>1){
-    db <- couch.makedbname(db)
-  }
-  couchdb <-  couch.get.url()
-  uri <- paste(couchdb,db,
-               ## remove spaces in url or doc id
-               RCurl::curlEscape(docname),
-               sep="/");
+    h=RCurl::getCurlHandle()
+    couch.session(h)## session is required to delete replication docs
 
-  couch_userpwd <- couch.get.authstring()
+    if(length(db)>1){
+        db <- couch.makedbname(db)
+    }
+    couchdb <-  couch.get.url()
+    uri <- paste(couchdb,db,
+                 ## remove spaces in url or doc id
+                 RCurl::curlEscape(docname),
+                 sep="/");
 
-  doc_rev <- NULL
-  if(is.null(doc) || is.null(doc['_rev'])){
-      ## do a head fetch to get the rev
-      doc_rev <- get.rev.from.head(db,docname,h)
-  }else{
-      doc_rev <- doc['_rev']
-  }
-  uri <- paste(uri,paste('rev',doc_rev,sep='='),sep='?')
-  reader = RCurl::basicTextGatherer()
 
-  if(is.null(couch_userpwd)){
-      RCurl::curlPerform(
-          url = uri
-         ,httpheader = c('Content-Type'='application/json')
-         ,customrequest = "DELETE"
-         ,writefunction = reader$update
-          )
-  }else{
-      RCurl::curlPerform(
-          url = uri
-         ,httpheader = c('Content-Type'='application/json')
-         ,customrequest = "DELETE"
-         ,writefunction = reader$update
-         ,userpwd=couch_userpwd
-          )
-  }
+    couch_userpwd <- couch.get.authstring()
 
-  rjson::fromJSON(reader$value())
+    doc_rev <- NULL
+    if(is.null(doc) || is.null(doc['_rev'])){
+        ## do a head fetch to get the rev
+        doc_rev <- get.rev.from.head(db,docname,h)
+    }else{
+        doc_rev <- doc['_rev']
+    }
+    uri <- paste(uri,paste('rev',doc_rev,sep='='),sep='?')
+    hreader <- RCurl::basicHeaderGatherer()
+    breader = RCurl::basicTextGatherer()
+    RCurl::curlPerform(
+        url = uri
+       ,httpheader = c('Content-Type'='application/json')
+       ,customrequest = "DELETE"
+       ,headerfunction = hreader$update
+       ,writefunction = breader$update
+       ,curl=h
+       ##,verbose=TRUE
+        )
+
+    headers <-  hreader$value()
+    not.found <- headers['status'] == 404
+    del.okay  <- headers['status'] == 200
+    if(any(not.found) || any(del.okay)){
+        return(1)
+    }else{
+        return(0)
+    }
+
 }
 ##' a convenience wrapper around the head call, above
 ##'

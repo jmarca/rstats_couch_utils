@@ -68,10 +68,7 @@ test_that("can put and delete",{
     del_result <- couch.delete(parts,
                                docname=id
                                )
-    expect_that(del_result,is_a('list'))
-    expect_that(names(del_result),equals(c('ok','id','rev')))
-    expect_that(del_result$ok,equals(TRUE))
-    expect_that(del_result$id,equals('frightful waste'))
+    expect_that(del_result,equals(1))
 
     ## can't get it again
     doc <- couch.get(parts,put_result$id)
