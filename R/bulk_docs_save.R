@@ -279,6 +279,7 @@ couch.bulk.docs.save <- function(db,
     }
 
     ## here I assume that docdf is a datafame
+    config <- get.config()$couchdb
     if(missing(db)){
         db <- config$trackingdb
     }else{

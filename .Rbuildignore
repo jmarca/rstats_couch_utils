@@ -1,0 +1,8 @@
+.*cookies\.txt$
+package\.json$
+^test$
+^test\.config\.json
+node_modules.*
+node_modules$
+^Rtest\.R$
+^Rinstall\.R$
