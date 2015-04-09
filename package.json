@@ -6,7 +6,9 @@
   "directories": {
     "test": "test"
   },
-  "dependencies": {},
+    "dependencies": {
+        "configr":"jmarca/configr"
+  },
   "devDependencies": {
     "async": "",
     "lodash": "",

@@ -17,8 +17,44 @@ attachments works.  Now it will load the file in the routine.  If this
 fixes problems I've been having then all routines are likely to move
 to this model.
 
+# Testing
+
+testing is irritating.
+
+You have to do this in R:
+
+```
+Sys.setenv(RCOUCHUTILS_TEST_CONFIG='/full/path/to/test.config.json')
+```
+
+or in bash
+
+```
+export RCOUCHUTILS_TEST_CONFIG='/full/path/to/test.config.json'
+```
+
+Then the test config file needs to point to a valid and running
+couchdb instance as follows:
+
+```
+{
+    "couchdb": {
+        "host": "127.0.0.1",
+        "port":5984,
+        "trackingdb":"a_test_state_db",
+        "auth":{"username":"myname",
+                "password":"mypass"
+               },
+        "dbname":"testing",
+        "design":"detectors",
+        "view":"fips_year"
+    }
+}
+```
+
+Obviously change the name of your username and password to real ones.
+
 # License
 
 
 I guess the GPL v2 for now, as most of R is licensed like that.
-

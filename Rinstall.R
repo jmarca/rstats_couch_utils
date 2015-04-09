@@ -1,0 +1,6 @@
+## path_npm <- normalizePath('./node_modules', winslash = "/", mustWork = FALSE)
+path <- normalizePath('.', winslash = "/", mustWork = FALSE)
+lib_paths <- .libPaths()
+##.libPaths(c(path,path_npm, lib_paths))
+.libPaths(c(path, lib_paths))
+devtools::install()

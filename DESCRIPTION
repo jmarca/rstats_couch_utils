@@ -9,4 +9,5 @@ LazyData: true
 Suggests: testthat
 Imports: RCurl,
     plyr,
-    rjson
+    rjson,
+    configr

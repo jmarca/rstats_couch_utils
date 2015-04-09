@@ -1,6 +1,6 @@
-library('rcouchutils')
-pkg <- as.package('.')
-Sys.setenv(RCOUCHDBUTILS_CONFIG_FILE=paste(pkg$path,'test.config.json',sep='/'))
+config <- get.config(Sys.getenv('RCOUCHUTILS_TEST_CONFIG'))
+##library(RCurl)
+##data('mimeTypeExtensions',package='RCurl')
 
 sourceparts <- c('replication','testing','a')
 destparts <- c('replication','testing','b')

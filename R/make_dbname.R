@@ -10,7 +10,7 @@
 ##' get back what you passed in.
 ##' @author James E. Marca
 couch.preface <- function(components){
-    config <- get.config()
+    config <- get.config()$couchdb
     if(!is.null(config$dbname)){
         components <- c(config$dbname,components)
     }

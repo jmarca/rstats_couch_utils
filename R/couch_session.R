@@ -18,7 +18,7 @@ couch.session <- function(h){
     couchdb <- couch.get.url()
     uri <- paste(couchdb,"_session",sep="/")
     reader = RCurl::basicTextGatherer()
-    config <-  get.config()
+    config <-  get.config()$couchdb
     if(is.null(config$auth) ||
        is.null(config$auth$username) ||
        is.null(config$auth$password)){

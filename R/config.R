@@ -1,86 +1,30 @@
-## requires that dbname, etc be set externally
-## non-local is where to go to be sure (tracking db)
-## and also the target of all replication calls
-## local is where to send bulk saves,
-## and the source of replication calls
 
 
-config <- NULL
+##' wrapper for configr::configrr closure generator
+##'
+##' assumes the file passed in is JSON.  See configr::configrr
+##'
+##' @param file the file to parse. no default.  no safetynet
+##' @return the configuration, or nothing, I guess
+configrr <- configr::configrr()
 
-##' Read in the config file, return as an object
+##' Get the configuration file and load it up
 ##'
-##' depends on the environment variable R_COUCH_CONFIG_FILE
-##' and presumes it is JSON and presumes that it has an entry called couchdb.
+##' assumes the file passed in is JSON.  See configr::configrr
 ##'
-##' So for example
+##' Also, you need to call this before doing anything else at least
+##' once with an actual configuration file.  Every other time it will
+##' just grab the results of the very first invocation.
 ##'
-##' {
-##'     "couchdb": {
-##'         "host": "192.168.0.1",
-##'         "port":5984,
-##'         "trackingdb":"a_test_state_db",
-##'         "auth":{"username":"blabbity",
-##'                 "password":"correct horse battery staple"
-##'                }
-##'     },
-##'     "postgresql":{
-##'         "host":"192.168.0.1",
-##'         "port":5432,
-##'         "auth":{"username":"sqlrulez"},
-##'         "grid_merge_sqlquery_db":"spatialspaces"
-##'     }
-##' }
-##'
-##' Note that the "couchdb" portion of your configuration should
-##' follow that pattern exactly.  I really want host, port, trackingdb
-##' and auth, with auth containing username and password fields
-##'
-##' @title read.config
-##' @return the config file, as an R object, but only the couchdb part
-##' @export
+##' @title get.config
+##' @param file the file to parse. no default.  no safetynet
+##' @return the configuration, or nothing, I guess
 ##' @author James E. Marca
-get.config <- function(){
-    if(is.null(config)){
-
-        configfile <-  Sys.getenv(c("RCOUCHDBUTILS_CONFIG_FILE"))[1]
-        if(configfile ==  ''){
-            configfile <- 'test.config.json'
-        }
-
-        config <- rjson::fromJSON(file=configfile)$couchdb
-
-        if(is.null(config$host)){
-            config$host <- '127.0.0.1'
-        }
-        if(is.null(config$port)){
-            config$port <- 5984
-        }
-        if(is.null(config$trackingdb)){
-            trackingdb <- 'tracking'
-        }
-
-        if(is.null(config$auth)){
-            print ('warning, without an auth field in the config JSON you will not be able to create or delete databases')
-
-        }else{
-            if(is.null(config$auth$username)){
-                print ('warning, without an auth:username field in the config JSON you will not be able to create or delete databases')
-            }
-            if(is.null(config$auth$password)){
-                print ('warning, without an auth:password field in the config JSON you will not be able to create or delete databases')
-            }
-        }
-
-        ## set dbname default, if not specified
-        if(is.null(config$dbname)){
-            config$dbname <- 'vdsdata'
-        }
-        options(RCurlOptions = list(
-                    fresh.connect = TRUE
-            ))
-    }
-    config
+##' @export
+get.config <- function(file){
+    configrr(file)
 }
+
 
 ##' get the couchdb url based on the config file parameters
 ##'
@@ -88,8 +32,9 @@ get.config <- function(){
 ##' @return a URL to couchdb
 ##' @export
 ##' @author James E. Marca
+##'
 couch.get.url <- function(){
-    config <- get.config()
+    config <- get.config()$couchdb
     couchdb <- paste("http://",config$host,':',config$port,sep='')
     return (couchdb)
 }
@@ -101,7 +46,7 @@ couch.get.url <- function(){
 ##' @return an auth string you can use with RCurl call
 ##' @author James E. Marca
 couch.get.authstring <- function(){
-    config <- get.config()
+    config <- get.config()$couchdb
     authstring <- NULL
     if(!is.null(config$auth) &&
        !is.null(config$auth$username) &&

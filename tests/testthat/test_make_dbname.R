@@ -1,10 +1,8 @@
-library('rcouchutils')
-pkg <- as.package('.')
-Sys.setenv(RCOUCHDBUTILS_CONFIG_FILE=paste(pkg$path,'test.config.json',sep='/'))
+config <- get.config(Sys.getenv('RCOUCHUTILS_TEST_CONFIG'))
 
 test_that("make db name stuff works okay",{
     parts <- c('a','b')
-    config <- get.config()
+    config <- get.config()$couchdb
     expect_that(couch.makedbname(parts),
                 equals(paste(config$dbname,"%2Fa%2Fb",sep='')))
 

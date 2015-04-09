@@ -1,11 +1,10 @@
-library('rcouchutils')
-pkg <- as.package('.')
-Sys.setenv(RCOUCHDBUTILS_CONFIG_FILE=paste(pkg$path,'test.config.json',sep='/'))
+config <- get.config(Sys.getenv('RCOUCHUTILS_TEST_CONFIG'))
 
 parts <- c('bulk','docs')
 couch.makedb(parts)
 dbname <-  couch.makedbname(parts)
 
+context('retrieving')
 test_that("can retrieve all docs",{
 
     doc <- list()
@@ -86,8 +85,7 @@ test_that("can retrieve all docs",{
 
 })
 
-test_that('bulk doc works',{
-
+context('putting with bulk docs')
     ## generate a lot of "sites"
     grid <- NULL
     for (gridx in 1:10){
@@ -105,6 +103,9 @@ test_that('bulk doc works',{
 
     ## that's 21,700 rows we can write
 
+test_that('bulk doc works',{
+
+
     ## but let's not croak all at once!
     res <- couch.bulk.docs.save(parts,head(grid))
     ## print (res)
@@ -119,10 +120,14 @@ test_that('bulk doc works',{
     res <- couch.bulk.docs.save(parts,grid[1:10,])
     expect_that(res,equals(10))
 
-    ## and the rest.  choke on that, CouchDB!
-    print(paste('stand by for big bulk_docs save of ',
+})
+
+context(paste('stand by for big bulk_docs save of ',
                 length(grid[,1]),
-                'documents'))
+               'documents'))
+
+test_that('big bulk doc works',{
+
     res <- couch.bulk.docs.save(parts,grid)
     expect_that(res,equals(length(grid[,1])))
 

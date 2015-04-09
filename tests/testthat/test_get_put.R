@@ -1,6 +1,4 @@
-library('rcouchutils')
-pkg <- as.package('.')
-Sys.setenv(RCOUCHDBUTILS_CONFIG_FILE=paste(pkg$path,'test.config.json',sep='/'))
+config <- get.config(Sys.getenv('RCOUCHUTILS_TEST_CONFIG'))
 
 parts <- c('get','put','post')
 couch.makedb(parts)

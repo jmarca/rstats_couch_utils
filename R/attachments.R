@@ -1,4 +1,5 @@
-library(RCurl) ## need to do this for mimeTypeExtensions
+##library(RCurl) ## need to do this for mimeTypeExtensions
+##data('mimeTypeExtensions',package='RCurl')
 
 ##' Attach something like a file or whatnot to a couchdb document
 ##'
@@ -19,7 +20,7 @@ library(RCurl) ## need to do this for mimeTypeExtensions
 ##' says okay
 ##' @export
 ##' @author James E. Marca
-couch.attach <- function(db=trackingdb,
+couch.attach <- function(db,
                          docname,
                          attfile,
                          h=RCurl::getCurlHandle()){
