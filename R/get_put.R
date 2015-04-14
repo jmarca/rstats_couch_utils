@@ -310,13 +310,13 @@ get.db <- function(db,h=RCurl::getCurlHandle()){
 ##' @param doc the list() of named values to add to the JSON subpart
 ##' under the year
 ##' @param h a prior curl handle, or will automatically get a new one
-##' @param db the name of the state database, defaults to whatever is
-##' in the config doc under trackingdb
+##' @param db the name of the state database
 ##' @return the result of the call to \code{\link{couch.put}}
+##' @export
 ##' @author James E. Marca
 couch.set.state <- function(year,id, doc,
                             h=RCurl::getCurlHandle(),
-                            db=NULL){
+                            db){
 
   current = couch.get(db,id,h=h)
   doc.names  <- names(doc)
@@ -350,11 +350,11 @@ couch.set.state <- function(year,id, doc,
 ##' "wim.10.N"
 ##' @param state the new state to stash in the detector's doc, for the
 ##' given year
-##' @param db the state db, will default to whatever is configured in
-##' the config file as "couchdb":{...,"trackingdb":"whatever",...}
+##' @param db the state db
 ##' @return either the status, if found, or "todo" if not
+##' @export
 ##' @author James E. Marca
-couch.check.state <- function(year,id,state,db=trackingdb){
+couch.check.state <- function(year,id,state,db){
   statusdoc <- couch.get(db,id)
   result <- 'error' ## default to error
   current.names <- names(statusdoc)

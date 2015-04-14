@@ -101,7 +101,7 @@ couch.attach <- function(db,
 ##' the value of varnames[1], if you want.
 ##' @export
 ##' @author James E. Marca
-couch.get.attachment <- function(db=trackingdb,docname,attachment){
+couch.get.attachment <- function(db='vdsdata%2ftracking',docname,attachment){
     if(length(db)>1){
         db <- couch.makedbname(db)
     }
@@ -162,6 +162,7 @@ couch.get.attachment <- function(db=trackingdb,docname,attachment){
 ##' @param docname the document id
 ##' @param attachment the name of the attachment you are looking for
 ##' @return TRUE if attachment is there, FALSE if not
+##' @export
 ##' @author James E. Marca
 couch.has.attachment <- function(db,docname,attachment){
   r <- couch.get(db,docname)

@@ -35,7 +35,7 @@ couch.makedbname <- function( components ){
 }
 
 ## probably not going to be used anymore, so comment it out and see
-trackingdb <- "evil global variable" ## couch.makedbname('tracking')
+## trackingdb <- "evil global variable" ## couch.makedbname('tracking')
 
 ##' Make CouchDB database name, but without escaping the slashes
 ##'
