@@ -13,9 +13,14 @@ couch.makedb <- function( db){
 
     couchdb <-  couch.get.url()
     uri <- paste(couchdb,db,sep="/");
-    couch_userpwd <- couch.get.authstring()
 
-    ##  print(uri)
+    h=RCurl::getCurlHandle()
+    couch.session(h)
+
+    ## couch_userpwd <- couch.get.authstring()
+
+    ## print (couch_userpwd)
+    ## print(uri)
 
     reader = RCurl::basicTextGatherer()
 
@@ -24,10 +29,10 @@ couch.makedb <- function( db){
        ,httpheader = c('Content-Type'='application/json')
        ,customrequest = "PUT"
        ,writefunction = reader$update
-       ,userpwd=couch_userpwd
+       ,curl=h
         )
 
-    ##print(paste( 'making db',db, reader$value() ))
+    ## print(paste( 'making db',db, reader$value() ))
     rjson::fromJSON(reader$value())
 }
 
@@ -51,7 +56,8 @@ couch.deletedb <- function(db){
 
   couchdb <-  couch.get.url()
   uri <- paste(couchdb,db,sep="/");
-  couch_userpwd <- couch.get.authstring()
+    h=RCurl::getCurlHandle()
+    couch.session(h)
 
   reader = RCurl::basicTextGatherer()
   RCurl::curlPerform(
@@ -59,7 +65,7 @@ couch.deletedb <- function(db){
      ,httpheader = c('Content-Type'='application/json')
      ,customrequest = "DELETE"
      ,writefunction = reader$update
-     ,userpwd=couch_userpwd
+     ,curl=h
       )
 
   rjson::fromJSON(reader$value())
