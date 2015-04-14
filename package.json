@@ -16,7 +16,8 @@
     "request": ""
   },
   "scripts": {
-    "test": "mocha"
+      "test": "Rscript Rtest.R",
+      "install":"Rscript Rinstall.R"
   },
   "repository": {
     "type": "git",
