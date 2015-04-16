@@ -17,6 +17,7 @@
 ##' will this function download attachments as well
 ##' @return the result of the query, parsed into R lists or whatnot
 ##' @author James E. Marca
+##' @export
 couch.allDocs <- function(db, query, view='_all_docs',
                           include.docs = TRUE
                           ){
