@@ -5,7 +5,10 @@
 ##'
 ##' @title couch.attach
 ##' @param db the database name, or its component parts as a list
-##' @param docname the document id to which you want to attach
+##' @param docname the document id to which you want to attach.  It is
+##' okay to pass a new docname.  If the doc does not yet exist in the
+##' database, then a new document will be created and the file
+##' attached to that new document with the correct id.
 ##' @param attfile the file that you want to attach.  Note that the
 ##' last part of the file name will be URL escaped, and will serve as
 ##' the name of the thing that is attached.  So for example if you

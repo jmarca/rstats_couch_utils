@@ -134,7 +134,13 @@ couch.head <- function(db,docname, h=RCurl::getCurlHandle()){
 ##' @title couch.put
 ##' @param db the target database
 ##' @param docname the document id to put
-##' @param doc the document to save at the above id
+##' @param doc the document to save at the above id.  this can be an R
+##' object, or a character string.  If it is a string, (is.character()
+##' returns true) then it will be passed as is to couchdb as the JSON
+##' content.  I use this in the attachment function to create an empty
+##' doc by passing "{}".  Otherwise, anything goes, and if it is too
+##' complicated, then pass your own dumper function that understands
+##' your R object and can convert it into JSON
 ##' @param h a curl handle, if you have a persistent one
 ##' @param dumper the JSON dumper that works best with your doc
 ##' @return the response from couchdb.  Probably okay or not okay kind
