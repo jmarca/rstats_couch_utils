@@ -78,6 +78,16 @@ test_that("can put and delete",{
 
 })
 
+test_that("can put a string",{
+    id <- 'prettyempty'
+    put_result <- couch.put(parts,
+                            docname=id,
+                            doc='{}' )
+    expect_that(names(put_result),equals(c('ok','id','rev')))
+    expect_that(put_result$ok,equals(TRUE))
+    expect_that(put_result$id,equals('prettyempty'))
+
+})
 test_that("can set and check state",{
 
     dbname <- couch.makedbname(parts)

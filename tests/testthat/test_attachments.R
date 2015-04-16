@@ -63,4 +63,16 @@ test_that("can save attachments to a file",{
 
 })
 
+test_that('attaching to a not-yet-existing doc will work',{
+    id <- 'Rivbike'
+    res <- couch.attach(dbname,id,'./files/fig.png')
+    expect_that(res,is_a('list'))
+    expect_that(names(res),equals(c('ok','id','rev')))
+    expect_that(res$ok,equals(TRUE))
+
+    hasit <- couch.has.attachment(dbname,id,'fig.png')
+    expect_that(hasit,equals(TRUE))
+
+
+})
 couch.deletedb(parts)

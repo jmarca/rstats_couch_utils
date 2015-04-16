@@ -153,12 +153,17 @@ couch.put <- function(db,docname,doc,h=RCurl::getCurlHandle(),dumper=jsondump5){
                sep="/");
   couch_userpwd <- couch.get.authstring()
   reader = RCurl::basicTextGatherer()
+
+  jsondoc <- dumper(doc)
+  if(is.character(doc)){
+      jsondoc <- doc
+  }
   if(is.null(couch_userpwd)){
       RCurl::curlPerform(
           url = uri
          ,customrequest = "PUT"
          ,httpheader = c('Content-Type'='application/json')
-         ,postfields = dumper(doc)
+         ,postfields = jsondoc
          ,writefunction = reader$update
          ,curl=h
           )
@@ -167,7 +172,7 @@ couch.put <- function(db,docname,doc,h=RCurl::getCurlHandle(),dumper=jsondump5){
           url = uri
          ,customrequest = "PUT"
          ,httpheader = c('Content-Type'='application/json')
-         ,postfields = dumper(doc)
+         ,postfields = jsondoc
          ,writefunction = reader$update
          ,curl=h
          ,userpwd=couch_userpwd

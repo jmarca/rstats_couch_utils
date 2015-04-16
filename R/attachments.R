@@ -44,7 +44,10 @@ couch.attach <- function(db,
     couch_userpwd <- couch.get.authstring()
 
     doc_rev <- get.rev.from.head(db,docname,h)
-
+    if(is.na(doc_rev)){
+        result <- couch.put(db,docname,doc="{}")
+        doc_rev <- result$rev
+    }
     uri <- paste(uri,paste('rev',doc_rev,sep='='),sep='?')
 
     content.type <- RCurl::guessMIMEType(attfile, "application/x-binary")
