@@ -44,30 +44,47 @@ couch.attach <- function(db,
                RCurl::curlEscape(docname),
                RCurl::curlEscape(filename),
                sep="/");
-    couch_userpwd <- couch.get.authstring()
+    ## couch_userpwd <- couch.get.authstring()
 
-    doc_rev <- get.rev.from.head(db,docname,h)
+    doc_rev <- get.rev.from.head(db,docname,h=h)
     if(is.na(doc_rev)){
+        ## can't use existing connection here.  Curl pukes
         result <- couch.put(db,docname,doc="{}")
         doc_rev <- result$rev
     }
     uri <- paste(uri,paste('rev',doc_rev,sep='='),sep='?')
 
     content.type <- RCurl::guessMIMEType(attfile, "application/x-binary")
-
+    ## debugging
+    ## assemble an equivalent curl command line, for testing
+    ## commandLine <- paste('curl -vX PUT ',uri,' --data-binary @',attfile,
+    ##                      ' -H "Content-Type: ',content.type[[1]],'"',sep='')
+    ## cat (commandLine)
+    
     reader = RCurl::basicTextGatherer()
-    f <- RCurl::CFILE(filename=attfile)
-    res <- RCurl::curlPerform(url = uri,
-                              customrequest='PUT',
-                              upload = TRUE,
-                              writefunction = reader$update,
-                              readdata = f@ref,
-                              infilesize = file.info(attfile)[1, "size"],
-                              httpheader = c('Content-Type'=content.type[[1]]),
-                              curl=h
-                              ##,verbose=TRUE
-                              )
-
+    
+    res <- RCurl::ftpUpload(what=attfile, to=uri
+                           ,httpheader = c('Content-Type'=content.type[[1]])
+                           ,customrequest='PUT'
+                           ##,verbose=TRUE
+                           ,upload=TRUE
+                           ,writefunction = reader$update
+                           ,curl=h
+                            )
+    
+    ## apparently, CFILE doesn't want to work anymore
+    ## f <- RCurl::CFILE(filename=attfile)
+    ## res <- RCurl::curlPerform(url = uri,
+    ##                           customrequest='PUT',
+    ##                           upload = TRUE,
+    ##                           writefunction = reader$update,
+    ##                           readdata = f@ref,
+    ##                           infilesize = file.info(attfile)[1, "size"],
+    ##                           httpheader = c('Content-Type'=content.type[[1]]),
+    ##                           curl=h
+    ##                           ,verbose=TRUE
+    ##                           )
+  
     rjson::fromJSON(reader$value())
 
 }

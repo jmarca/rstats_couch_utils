@@ -97,33 +97,19 @@ couch.head <- function(db,docname, h=RCurl::getCurlHandle()){
                RCurl::curlEscape(docname),
                sep="/");
 
-  couch_userpwd <- couch.get.authstring()
-
-  reader <- RCurl::basicHeaderGatherer()
-    if(is.null(couch_userpwd)){
-
-      RCurl::getURLContent(
-          url = uri
-         ,customrequest = "HEAD"
-         ,nobody=TRUE
-         ,httpheader = c('Content-Type'='application/json')
-         ,headerfunction = reader$update
-         ,curl=h
-          )
-
-  }else{
-
-      RCurl::getURLContent(
-          url = uri
-         ,customrequest = "HEAD"
-         ,nobody=TRUE
-         ,httpheader = c('Content-Type'='application/json')
-         ,headerfunction = reader$update
-         ,curl=h
-         ,userpwd=couch_userpwd
-          )
-
+  if(missing(h)){
+      couch.session(h)
   }
+  reader <- RCurl::basicHeaderGatherer()
+
+  RCurl::getURLContent(
+      url = uri
+     ,customrequest = "HEAD"
+     ,nobody=TRUE
+     ,httpheader = c('Content-Type'='application/json')
+     ,headerfunction = reader$update
+     ,curl=h
+      )
 
   reader$value()
 }
@@ -157,34 +143,23 @@ couch.put <- function(db,docname,doc,h=RCurl::getCurlHandle(),dumper=jsondump5){
                ## remove spaces in url or doc id
                RCurl::curlEscape(docname),
                sep="/");
-  couch_userpwd <- couch.get.authstring()
+  if(missing(h)){
+      couch.session(h)
+  }
   reader = RCurl::basicTextGatherer()
 
   jsondoc <- dumper(doc)
   if(is.character(doc)){
       jsondoc <- doc
   }
-  if(is.null(couch_userpwd)){
-      RCurl::curlPerform(
-          url = uri
-         ,customrequest = "PUT"
-         ,httpheader = c('Content-Type'='application/json')
-         ,postfields = jsondoc
-         ,writefunction = reader$update
-         ,curl=h
-          )
-  }else{
-      RCurl::curlPerform(
-          url = uri
-         ,customrequest = "PUT"
-         ,httpheader = c('Content-Type'='application/json')
-         ,postfields = jsondoc
-         ,writefunction = reader$update
-         ,curl=h
-         ,userpwd=couch_userpwd
-          )
-
-  }
+  RCurl::curlPerform(
+      url = uri
+     ,customrequest = "PUT"
+     ,httpheader = c('Content-Type'='application/json')
+     ,postfields = jsondoc
+     ,writefunction = reader$update
+     ,curl=h
+      )
   response <-  reader$value()
   if(!is.null(response) && response != ''){
       response <- rjson::fromJSON(response)
