@@ -60,18 +60,18 @@ couch.attach <- function(db,
     ## commandLine <- paste('curl -vX PUT ',uri,' --data-binary @',attfile,
     ##                      ' -H "Content-Type: ',content.type[[1]],'"',sep='')
     ## cat (commandLine)
-    
+
     reader = RCurl::basicTextGatherer()
-    
+
     res <- RCurl::ftpUpload(what=attfile, to=uri
                            ,httpheader = c('Content-Type'=content.type[[1]])
                            ,customrequest='PUT'
                            ##,verbose=TRUE
-                           ,upload=TRUE
+                           ##,upload=TRUE
                            ,writefunction = reader$update
                            ,curl=h
                             )
-    
+
     ## apparently, CFILE doesn't want to work anymore
     ## f <- RCurl::CFILE(filename=attfile)
     ## res <- RCurl::curlPerform(url = uri,
@@ -84,7 +84,7 @@ couch.attach <- function(db,
     ##                           curl=h
     ##                           ,verbose=TRUE
     ##                           )
-  
+
     rjson::fromJSON(reader$value())
 
 }
