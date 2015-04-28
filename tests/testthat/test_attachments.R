@@ -61,6 +61,15 @@ test_that("can save attachments to a file",{
     expect_that(barfl$x,equals(c(1,2,3,4,5)))
     expect_that(barfl$y,equals(c('a','b','c','d','e')))
 
+    context('can delete attachments')
+    res <- couch.detach(dbname,id,'save.RData')
+    expect_that(res,equals(1))
+
+
+    hasit <- couch.has.attachment(dbname,id,'save.RData')
+    expect_that(hasit,equals(FALSE))
+
+
 })
 
 test_that('attaching to a not-yet-existing doc will work',{

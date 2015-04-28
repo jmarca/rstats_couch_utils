@@ -192,3 +192,63 @@ couch.has.attachment <- function(db,docname,attachment){
   attachments <- r[['_attachments']]
   attachment %in% names(attachments)
 }
+
+##' delete an attachment from a couchdb database
+##'
+##' @title couch.detach
+##' @param db the database name, or its component parts as a list
+##' @param docname the document id to which you want to attach
+##' @param attname the name of the attachment to delete. Note that the
+##' name will *not* be URL escaped.  This routine expects that you've
+##' already done that
+##' @param h an existing RCurl handle.  will create one if not passed in
+##' @return the result of attaching.  Hopefully a JSON object that
+##' says okay
+##' @export
+##' @author James E. Marca
+couch.detach <- function(db,
+                         docname,
+                         attname,
+                         h=RCurl::getCurlHandle()){
+    if(missing(h)){
+        couch.session(h)
+    }
+
+    if(length(db)>1){
+        db <- couch.makedbname(db)
+    }
+    couchdb <-  couch.get.url()
+    uri <- paste(couchdb,db,
+               ## remove spaces in url or doc id
+               RCurl::curlEscape(docname),
+               attname,
+               sep="/");
+
+    doc_rev <- get.rev.from.head(db,docname,h)
+
+    uri <- paste(uri,paste('rev',doc_rev,sep='='),sep='?')
+
+
+    hreader <- RCurl::basicHeaderGatherer()
+    breader = RCurl::basicTextGatherer()
+    RCurl::curlPerform(
+        url = uri
+       ,httpheader = c('Content-Type'='application/json')
+       ,customrequest = "DELETE"
+       ,headerfunction = hreader$update
+       ,writefunction = breader$update
+       ,curl=h
+       ##,verbose=TRUE
+        )
+
+    headers <-  hreader$value()
+    not.found <- headers['status'] == 404
+    del.okay  <- headers['status'] == 200
+    if(any(not.found) || any(del.okay)){
+        return(1)
+    }else{
+        return(0)
+    }
+
+
+}
