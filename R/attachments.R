@@ -129,11 +129,27 @@ couch.get.attachment <- function(db='vdsdata%2ftracking',docname,attachment){
         db <- couch.makedbname(db)
     }
     couchdb <-  couch.get.url()
+
+    ## first, verify that there is a document as expected
+    doc_rev <- get.rev.from.head(db,docname)
+    if(is.na(doc_rev)){
+        ## nothing there, bail out
+        return (NULL)
+    }
+
+    ## now verify that there is an attachment there
+    if(! couch.has.attachment(db,docname,attachment)){
+        ## again, nothing to do
+        return (NULL)
+    }
+    ## okay, not I am sure the doc exists and there is an attachment
+
     uri <- paste(couchdb,db,
-               ## remove spaces in url or doc id
-               RCurl::curlEscape(docname),
-               RCurl::curlEscape(attachment),
-               sep="/");
+                     ## remove spaces in url or doc id
+                     RCurl::curlEscape(docname),
+                     RCurl::curlEscape(attachment),
+                     sep="/");
+
 
     tmp <- tempfile(paste('remotedata',attachment,sep='_'))
 
@@ -155,13 +171,24 @@ couch.get.attachment <- function(db='vdsdata%2ftracking',docname,attachment){
             print('success downloading, second try')
         }
     }else{
-        print('success downloading, first try')
+        ## print('success downloading, first try')
     }
     ## load it here
 
     env <- new.env()
-    res <- load(tmp, env)
+    W <- NULL
+    w.handler <- function(w){ # warning handler
+	W <<- w
+	## invokeRestart("muffleWarning")
+    }
+    value <-  withCallingHandlers(tryCatch({res <- load(tmp, env)},
+                                           error = function(e) e),
+                                  warning = w.handler)
     unlink(tmp)
+    if(!is.null(W)){
+        ## something failed during file load
+        return(NULL)
+    }
     result <- list()
     result[[res]]=env
     return (result)

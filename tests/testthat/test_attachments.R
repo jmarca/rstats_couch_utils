@@ -84,4 +84,39 @@ test_that('attaching to a not-yet-existing doc will work',{
 
 
 })
+
+test_that('non-existant or invalid docid  will not crash',{
+    id <- 'Nitto'
+    hasit <- couch.has.attachment(dbname,id,'fig.png')
+    expect_that(hasit,equals(FALSE))
+    getres <- couch.get.attachment(dbname,id,'fig.png')
+    testthat::expect_null(getres)
+
+    id <- NA
+    hasit <- couch.has.attachment(dbname,id,'fig.png')
+    expect_that(hasit,equals(FALSE))
+    getres <- couch.get.attachment(dbname,id,'fig.png')
+    testthat::expect_null(getres)
+
+})
+test_that('non-existant or incorrect attach id will not crash',{
+    id <- 'Nitto'
+    res <- couch.attach(dbname,id,'./files/fig.png')
+    expect_that(res,is_a('list'))
+    expect_that(names(res),equals(c('ok','id','rev')))
+    expect_that(res$ok,equals(TRUE))
+
+    hasit <- couch.has.attachment(dbname,id,'save.RData')
+    expect_that(hasit,equals(FALSE))
+    getres <- couch.get.attachment(dbname,id,'save.RData')
+    testthat::expect_null(getres)
+    ## and getting a figure should fail to "load" and return null
+    getres <- NULL
+
+    testthat::expect_warning( getres <- couch.get.attachment(dbname,id,'fig.png') )
+
+    testthat::expect_null(getres)
+
+})
+
 couch.deletedb(parts)
