@@ -142,7 +142,7 @@ couch.get.attachment <- function(db='vdsdata%2ftracking',docname,attachment){
         ## again, nothing to do
         return (NULL)
     }
-    ## okay, not I am sure the doc exists and there is an attachment
+    ## okay, now I am sure the doc exists and there is an attachment
 
     uri <- paste(couchdb,db,
                      ## remove spaces in url or doc id
