@@ -1,0 +1,9 @@
+{
+   "language": "javascript",
+   "views": {
+       "barfoo": {
+           "map": "function(doc) {\n  if(doc._id < 'think'){\n    emit([doc.bar,doc.foo], 1)\n  }\n  return null\n}",
+           "reduce": "_count"
+       }
+   }
+}
