@@ -241,10 +241,13 @@ couch.delete <- function(db,docname,doc=NULL){
 ##' @param db the database name
 ##' @param docname the document name
 ##' @param h the current curl handle, or will gen a new one
+##' @param escape_docname default TRUE, passed along to couch.head
 ##' @return a string value of the current doc's revision
 ##' @author James E. Marca
-get.rev.from.head <- function(db,docname,h=RCurl::getCurlHandle()){
-    doc.head <- couch.head(db,docname,h)
+get.rev.from.head <- function(db,docname
+                             ,h=RCurl::getCurlHandle()
+                             ,escape_docname=TRUE){
+    doc.head <- couch.head(db,docname,h=h,escape_docname=escape_docname)
     doc_rev <- gsub('\\"','',x=doc.head['ETag'],perl=TRUE)
     doc_rev
 }
