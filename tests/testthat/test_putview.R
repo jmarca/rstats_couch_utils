@@ -40,4 +40,4 @@ test_that("can save a design doc to a file",{
 })
 
 
-## couch.deletedb(parts)
+couch.deletedb(parts)
