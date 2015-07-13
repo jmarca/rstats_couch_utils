@@ -82,21 +82,27 @@ couch.get <- function(db,docname, h=RCurl::getCurlHandle()){
 ##' @param db the target database
 ##' @param docname the document id to fetch
 ##' @param h a curl handle, if you have a persistent one
+##' @param escape_docname set to FALSE if your docname is already URL escaped
 ##' @return the response from couchdb.  Probably okay or not okay kind
 ##' of thing, parsed JSON
 ##' @export
 ##' @author James E. Marca
-couch.head <- function(db,docname, h=RCurl::getCurlHandle()){
+couch.head <- function(db,docname, h=RCurl::getCurlHandle(),escape_docname=TRUE){
 
   if(length(db)>1){
     db <- couch.makedbname(db)
   }
   couchdb <-  couch.get.url()
-  uri <- paste(couchdb,db,
-               ## remove spaces in url or doc id
-               RCurl::curlEscape(docname),
-               sep="/");
+  uri <- NULL
+  if(escape_docname){
+      uri <- paste(couchdb,db,
+                   ## remove spaces in url or doc id
+                   RCurl::curlEscape(docname),
+                   sep="/");
+  }else{
+      uri <- paste(couchdb,db,docname,sep="/");
 
+  }
   if(missing(h)){
       couch.session(h)
   }
