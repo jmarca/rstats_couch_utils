@@ -1,4 +1,12 @@
 dot_is <- paste(getwd(),'..',sep='/')
+envrr <- Sys.getenv()
+dependencies <- grep(pattern='npm_package_rDependencies'
+                    ,x=names(envrr),perl=TRUE,value=TRUE)
+if('npm_config_root' %in% names(envrr)){
+    ## operating under an NPM install
+    print(paste('npm_config_root is',envrr$npm_config_root))
+    print(paste('I think root dir is',dot_is))
+}
 
 node_paths <- dir(dot_is,pattern='\\.Rlibs',
                   full.names=TRUE,recursive=TRUE,
