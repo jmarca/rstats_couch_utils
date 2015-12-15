@@ -262,6 +262,10 @@ couch.bulk.docs.save <- function(db,
                                  docdf,
                                  chunksize=1000,
                                  h=RCurl::getCurlHandle()){
+    if(!is.data.frame(docdf)){
+        return (couch.bulk.docs.save.list(db,docdf,chunksize,h))
+    }
+
     if(missing(h)){
         res <- couch.session(h)
     }
@@ -298,6 +302,15 @@ couch.bulk.docs.save <- function(db,
     ## the bulk docs target
     uri <- paste(couchdb,db,'_bulk_docs',sep="/")
 
+    docspushed <- 0
+
+    reader = nullTextGatherer()
+    ## for debugging, use the following, but it fills up for nothing
+    ## if you're dumping thousands of docs
+    ## reader <- RCurl::basicTextGatherer()
+
+
+
     ## push 1000 at a time
     i <- chunksize
     maxi <- length(docdf[,1])
@@ -305,19 +318,26 @@ couch.bulk.docs.save <- function(db,
 
     j <- 1
 
-    docspushed <- 0
 
-    reader = nullTextGatherer()
+    ## sort columns into numeric and text
+    num.cols <-  unlist(plyr::llply(docdf[1,],is.numeric))
+    txt.cols <- unlist(plyr::llply(docdf[1,],is.character))
+    oth.cols <- ! (num.cols | txt.cols)
+    num.cols <- varnames[num.cols]
+    txt.cols <- varnames[txt.cols]
+    oth.cols <- varnames[oth.cols]
 
-    ## for debugging, use the following, but it fills up for nothing
-    ## if you're dumping thousands of docs
-    ## reader <- RCurl::basicTextGatherer()
-
-    ## okay, if the input is a list, try something simpler because
-    ## most likely the caller has already fixed things up properly
-
-    if(is.list(docdf)){
-        bulkdocs <- rjson::toJSON(docdf)
+    while(length(docdf)>0) {
+        chunk <- docdf[j:i,]
+        if( i >= length(docdf[,1]) ){
+            docdf <- data.frame()
+        }else{
+            docdf <- docdf[-j:-i,]
+        }
+        ## for next iteration
+        if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
+        bulkdocs <- jsondump6(chunk,num.cols=num.cols,txt.cols=txt.cols,oth.cols=oth.cols)
+        ## print(bulkdocs)
         curlresult <- try( RCurl::curlPerform(
             url = uri
            ,httpheader = c('Content-Type'='application/json')
@@ -339,57 +359,109 @@ couch.bulk.docs.save <- function(db,
                ,postfields = bulkdocs
                ,writefunction = reader$update
                ,curl = h
-                )
-            }
-        docspushed <- docspushed + length(docdf)
-
-    }else{
-
-        ## sort columns into numeric and text
-        num.cols <-  unlist(plyr::llply(docdf[1,],is.numeric))
-        txt.cols <- unlist(plyr::llply(docdf[1,],is.character))
-        oth.cols <- ! (num.cols | txt.cols)
-        num.cols <- varnames[num.cols]
-        txt.cols <- varnames[txt.cols]
-        oth.cols <- varnames[oth.cols]
-
-        while(length(docdf)>0) {
-            chunk <- docdf[j:i,]
-            if( i >= length(docdf[,1]) ){
-                docdf <- data.frame()
-            }else{
-                docdf <- docdf[-j:-i,]
-            }
-            ## for next iteration
-            if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
-            bulkdocs <- jsondump6(chunk,num.cols=num.cols,txt.cols=txt.cols,oth.cols=oth.cols)
-            ## print(bulkdocs)
-            curlresult <- try( RCurl::curlPerform(
-                url = uri
-               ,httpheader = c('Content-Type'='application/json')
-               ,customrequest = "POST"
-               ,postfields = bulkdocs
-               ,writefunction = reader$update
-               ,curl = h
             )
-            )
-            if(class(curlresult) == "try-error"){
-                print ("\n Error saving to couchdb, trying again \n")
-                rm(h)
-                h = RCurl::getCurlHandle()
-                couch.session(h)
-                RCurl::curlPerform(
-                    url = uri
-                   ,httpheader = c('Content-Type'='application/json')
-                   ,customrequest = "POST"
-                   ,postfields = bulkdocs
-                   ,writefunction = reader$update
-                   ,curl = h
-                )
+        }
+        docspushed <- docspushed + length(chunk[,1])
+    }
+
+    # print(reader$value())
+    docspushed
+}
+
+##' couch bulk docs saver
+##'
+##' save more than one doc at a time.  In fact, by default save 1000 at a time.
+##'
+##' @title couch.bulk.docs.save
+##' @param db the database to save into.  Default to whatever is in
+##' the config file
+##' @param docdf the document to save, as a dataframe
+##' @param chunksize defaults to 1000.  How many docs to write at a time
+##' @param h an RCurl handle, or not (will create one)
+##' @return 1, or die trying
+##' @author James E. Marca
+couch.bulk.docs.save.list <- function(db,
+                                      doclist,
+                                      chunksize=1000,
+                                      h=RCurl::getCurlHandle()){
+    if(missing(h)){
+        res <- couch.session(h)
+    }
+
+    ## here expect that there is a list
+    ##
+
+    ## in case there are existing docs, have to first fetch all the doc revisions
+    varnames <- names(doclist[[1]])
+    existing_docs <- NULL
+
+    if('_id' %in% varnames){
+        ids <- plyr::laply(doclist,function(row){return (row[['_id']])})
+        ## fetch the corresponding revisions and insert now
+        id_rev <- couch.allDocsPost(db,keys=ids,include.docs=FALSE,h=h)
+        for(row in 1:length(id_rev$rows)){
+            r <- id_rev$rows[[row]]
+            if(!is.null(r$error)){
+                ## not found
+                next
             }
-            docspushed <- docspushed + length(chunk[,1])
+            if(!is.null(r$value$deleted) && r$value$deleted){
+                ## deleted, so ignore it
+                next
+            }
+
+            positn <- match(r$key,ids)
+            doclist[[positn]][['_rev']]=r$value$rev
+
+
         }
     }
+
+    config <- get.config()$couchdb
+    if(missing(db)){
+        db <- config$trackingdb
+    }else{
+        if(length(db)>1){
+            db <- couch.makedbname(db)
+        }
+    }
+    couchdb <-  couch.get.url()
+    ## the bulk docs target
+    uri <- paste(couchdb,db,'_bulk_docs',sep="/")
+
+    docspushed <- 0
+
+    reader = nullTextGatherer()
+    ## for debugging, use the following, but it fills up for nothing
+    ## if you're dumping thousands of docs
+    ## reader <- RCurl::basicTextGatherer()
+
+
+    bulkdocs <- rjson::toJSON(list('docs'=doclist))
+    curlresult <- try( RCurl::curlPerform(
+        url = uri
+       ,httpheader = c('Content-Type'='application/json')
+       ,customrequest = "POST"
+       ,postfields = bulkdocs
+       ,writefunction = reader$update
+       ,curl = h
+    )
+    )
+    if(class(curlresult) == "try-error"){
+        print ("\n Error saving to couchdb, trying again \n")
+        rm(h)
+        h = RCurl::getCurlHandle()
+        couch.session(h)
+        RCurl::curlPerform(
+            url = uri
+           ,httpheader = c('Content-Type'='application/json')
+           ,customrequest = "POST"
+           ,postfields = bulkdocs
+           ,writefunction = reader$update
+           ,curl = h
+        )
+    }
+    docspushed <- docspushed + length(doclist)
     ## print(reader$value())
     docspushed
 }

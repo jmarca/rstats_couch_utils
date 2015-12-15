@@ -86,22 +86,35 @@ test_that("can retrieve all docs",{
 })
 
 context('putting with bulk docs')
-    ## generate a lot of "sites"
-    grid <- NULL
-    for (gridx in 1:10){
-        for( gridy in 1:10 ){
-            ts <-  seq(from=as.POSIXct('2012-01-01'),
-                           to=as.POSIXct('2012-01-10'),
-                           by=3600)
-            grid <- rbind(grid,data.frame(x=gridx,y=gridy,ts=ts))
-        }
-
+## generate a lot of "sites"
+grid <- NULL
+for (gridx in 1:10){
+    for( gridy in 1:10 ){
+        ts <-  seq(from=as.POSIXct('2012-01-01'),
+                   to=as.POSIXct('2012-01-10'),
+                   by=3600)
+        grid <- rbind(grid,data.frame(x=gridx,y=gridy,ts=ts))
     }
-    grid$vol <- rnorm(length(grid[,1]),mean=200,sd=10)
-    grid$occ <- runif(length(grid[,1]))
-    grid[,'_id'] <- paste(grid$x,grid$y,grid$ts,sep='_')
 
-    ## that's 21,700 rows we can write
+}
+grid$vol <- rnorm(length(grid[,1]),mean=200,sd=10)
+grid$occ <- runif(length(grid[,1]))
+grid[,'_id'] <- paste(grid$x,grid$y,grid$ts,sep='_')
+
+## that's 21,700 rows we can write
+
+## build a list version
+lgrid <- list()
+for(i in 1:length(grid$vol)){
+    lgrid[[i]]=list(
+        '_id'=grid[i,'_id'],
+        'x'=grid$x[i],
+        'y'=grid$y[i],
+        'newvol'=grid$vol[i],
+        'newocc'=grid$occ[i],
+        'attr'=list('v'=grid$vol[i],
+                      'o'=grid$occ[i]))
+}
 
 test_that('bulk doc works',{
 
@@ -116,9 +129,43 @@ test_that('bulk doc works',{
     res <- couch.bulk.docs.save(parts,head(grid))
     expect_that(res,equals(length(head(grid[,1]))))
 
-    ## bigger chunk, have already in, half not
+    ## bigger chunk, some already in
     res <- couch.bulk.docs.save(parts,grid[1:10,])
-    expect_that(res,equals(10))
+    testthat::expect_that(res,equals(10))
+
+    storedids <- grid[1:12,'_id']
+    getstored <- couch.allDocsPost(parts,keys=storedids,include.docs=TRUE)
+
+    ## first 1:10 should be good, last two not found
+    for(i in 1:10){
+        row <- getstored$rows[[i]]$doc
+        testthat::expect_equal(as.numeric(row$vol),grid$vol[i], tolerance = .002)
+        testthat::expect_equal(as.numeric(row$occ),grid$occ[i], tolerance = .002)
+    }
+    testthat::expect_true(! is.null(getstored$rows[[11]]$error) )
+    testthat::expect_true(! is.null(getstored$rows[[12]]$error) )
+
+    ## list version of saving, only one new
+    res <- couch.bulk.docs.save(parts,lgrid[1:11])
+    expect_that(res,equals(11))
+
+    ## can get them back
+
+    getstored <- couch.allDocsPost(parts,keys=storedids,include.docs=TRUE)
+
+    ## last one should be not found
+    ## first 1:10 should not have vol, occ
+    for(i in 1:11){
+        ## print(paste('row',i))
+        row <- getstored$rows[[i]]$doc
+        testthat::expect_null(row$vol)
+        testthat::expect_null(row$occ)
+        testthat::expect_equal(as.numeric(row$newvol),grid$vol[i], tolerance = .002)
+        testthat::expect_equal(as.numeric(row$newocc),grid$occ[i], tolerance = .002)
+        testthat::expect_equal(row$newvol,lgrid[[i]]$newvol)
+        testthat::expect_equal(row$newocc,lgrid[[i]]$newocc)
+    }
+    testthat::expect_true(! is.null(getstored$rows[[12]]$error) )
 
 })
 
@@ -130,6 +177,29 @@ test_that('big bulk doc works',{
 
     res <- couch.bulk.docs.save(parts,grid)
     expect_that(res,equals(length(grid[,1])))
+
+    res <- couch.bulk.docs.save(parts,lgrid)
+    expect_that(res,equals(length(grid[,1])))
+
+})
+
+test_that('can save nested structures okay',{
+
+    env <- new.env()
+    res <- load(file='./tests/testthat/storedf.rda',envir = env)
+    testlist <- env[[res]]
+
+    res <- couch.bulk.docs.save(parts,testlist)
+    expect_that(res,equals(24))
+
+    ids <-  plyr::laply(testlist,function(row){return (row[['_id']])})
+    getstored <- couch.allDocsPost(parts,keys=ids,include.docs=TRUE)
+
+    for(i in 1:length(ids)){
+        row <- getstored$rows[[i]]$doc
+        testthat::expect_is(row$aadt,'list')
+        testthat::expect_equal(length(row$aadt),3)
+    }
 
 })
 
