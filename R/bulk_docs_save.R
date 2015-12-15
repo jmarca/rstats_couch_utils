@@ -137,7 +137,11 @@ couch.allDocsPost <- function(db,
 
     if(is.null(names(keys))||length(names(keys)) == 1){
         ## in this case, just pass as keys
-        thekeys <- rjson::toJSON(keys[[names(keys)]])
+        if(is.null(names(keys))){
+            thekeys <- rjson::toJSON(keys)
+        }else{
+            thekeys <- rjson::toJSON(keys[[names(keys)]])
+        }
         k <- paste('{"keys":',thekeys,'}',sep='')
     }else{
         ## split keys as body json, others as params
@@ -309,25 +313,11 @@ couch.bulk.docs.save <- function(db,
     ## if you're dumping thousands of docs
     ## reader <- RCurl::basicTextGatherer()
 
-    ## sort columns into numeric and text
-    num.cols <-  unlist(plyr::llply(docdf[1,],is.numeric))
-    txt.cols <- unlist(plyr::llply(docdf[1,],is.character))
-    oth.cols <- ! (num.cols | txt.cols)
-    num.cols <- varnames[num.cols]
-    txt.cols <- varnames[txt.cols]
-    oth.cols <- varnames[oth.cols]
+    ## okay, if the input is a list, try something simpler because
+    ## most likely the caller has already fixed things up properly
 
-    while(length(docdf)>0) {
-        chunk <- docdf[j:i,]
-        if( i >= length(docdf[,1]) ){
-            docdf <- data.frame()
-        }else{
-            docdf <- docdf[-j:-i,]
-        }
-        ## for next iteration
-        if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
-        bulkdocs <- jsondump6(chunk,num.cols=num.cols,txt.cols=txt.cols,oth.cols=oth.cols)
-        ## print(bulkdocs)
+    if(is.list(docdf)){
+        bulkdocs <- rjson::toJSON(docdf)
         curlresult <- try( RCurl::curlPerform(
             url = uri
            ,httpheader = c('Content-Type'='application/json')
@@ -335,8 +325,8 @@ couch.bulk.docs.save <- function(db,
            ,postfields = bulkdocs
            ,writefunction = reader$update
            ,curl = h
-            )
-                          )
+        )
+        )
         if(class(curlresult) == "try-error"){
             print ("\n Error saving to couchdb, trying again \n")
             rm(h)
@@ -350,9 +340,56 @@ couch.bulk.docs.save <- function(db,
                ,writefunction = reader$update
                ,curl = h
                 )
+            }
+        docspushed <- docspushed + length(docdf)
+
+    }else{
+
+        ## sort columns into numeric and text
+        num.cols <-  unlist(plyr::llply(docdf[1,],is.numeric))
+        txt.cols <- unlist(plyr::llply(docdf[1,],is.character))
+        oth.cols <- ! (num.cols | txt.cols)
+        num.cols <- varnames[num.cols]
+        txt.cols <- varnames[txt.cols]
+        oth.cols <- varnames[oth.cols]
+
+        while(length(docdf)>0) {
+            chunk <- docdf[j:i,]
+            if( i >= length(docdf[,1]) ){
+                docdf <- data.frame()
+            }else{
+                docdf <- docdf[-j:-i,]
+            }
+            ## for next iteration
+            if(length(docdf) && i > length(docdf[,1])) i <- length(docdf[,1])
+            bulkdocs <- jsondump6(chunk,num.cols=num.cols,txt.cols=txt.cols,oth.cols=oth.cols)
+            ## print(bulkdocs)
+            curlresult <- try( RCurl::curlPerform(
+                url = uri
+               ,httpheader = c('Content-Type'='application/json')
+               ,customrequest = "POST"
+               ,postfields = bulkdocs
+               ,writefunction = reader$update
+               ,curl = h
+            )
+            )
+            if(class(curlresult) == "try-error"){
+                print ("\n Error saving to couchdb, trying again \n")
+                rm(h)
+                h = RCurl::getCurlHandle()
+                couch.session(h)
+                RCurl::curlPerform(
+                    url = uri
+                   ,httpheader = c('Content-Type'='application/json')
+                   ,customrequest = "POST"
+                   ,postfields = bulkdocs
+                   ,writefunction = reader$update
+                   ,curl = h
+                )
+            }
+            docspushed <- docspushed + length(chunk[,1])
         }
-        docspushed <- docspushed + length(chunk[,1])
     }
-    # print(reader$value())
+    ## print(reader$value())
     docspushed
 }
