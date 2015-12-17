@@ -51,7 +51,7 @@ couch.allDocs <- function(db, query, view='_all_docs',
         q <- paste(q,'include_docs=true',sep='&')
     }
     uri <- paste(uri,q,sep='?')
-    print(uri)
+    ## print(uri)
     reader <- RCurl::basicTextGatherer()
     if(is.null(couch_userpwd)){
         RCurl::curlPerform(
