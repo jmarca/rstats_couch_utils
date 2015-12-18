@@ -15,6 +15,7 @@
 ##' not to download the document content, or to just get a list of the
 ##' doc ids and revisions.  CouchDB offers both choices.  In no case
 ##' will this function download attachments as well
+##' @param h a curl handle, optional
 ##' @return the result of the query, parsed into R lists or whatnot
 ##' @author James E. Marca
 ##' @export
@@ -374,7 +375,7 @@ couch.bulk.docs.save <- function(db,
 ##' @title couch.bulk.docs.save
 ##' @param db the database to save into.  Default to whatever is in
 ##' the config file
-##' @param docdf the document to save, as a dataframe
+##' @param doclist the documents to save, as a list
 ##' @param chunksize defaults to 1000.  How many docs to write at a time
 ##' @param h an RCurl handle, or not (will create one)
 ##' @return 1, or die trying
