@@ -19,10 +19,9 @@
 ##' @author James E. Marca
 ##' @export
 couch.allDocs <- function(db, query, view='_all_docs',
-                          include.docs = TRUE
+                          include.docs = TRUE,
+                          h=RCurl::getCurlHandle()
                           ){
-
-    h=RCurl::getCurlHandle()
 
     if(length(db)>1){
         db <- couch.makedbname(db)
