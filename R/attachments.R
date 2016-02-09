@@ -1,6 +1,3 @@
-##library(RCurl) ## need to do this for mimeTypeExtensions
-##data('mimeTypeExtensions',package='RCurl')
-
 ##' Attach something like a file or whatnot to a couchdb document
 ##'
 ##' @title couch.attach
@@ -54,7 +51,7 @@ couch.attach <- function(db,
     }
     uri <- paste(uri,paste('rev',doc_rev,sep='='),sep='?')
 
-    content.type <- RCurl::guessMIMEType(attfile, "application/x-binary")
+    content.type <- mime::guess_type(attfile, unknown="application/x-binary")
     ## debugging
     ## assemble an equivalent curl command line, for testing
     ## commandLine <- paste('curl -vX PUT ',uri,' --data-binary @',attfile,

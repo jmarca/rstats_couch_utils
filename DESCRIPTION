@@ -14,5 +14,6 @@ Imports:
     RCurl,
     plyr,
     rjson,
-    configr
+    configr,
+    mime
 RoxygenNote: 5.0.1
