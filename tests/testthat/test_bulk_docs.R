@@ -1,10 +1,10 @@
 config <- get.config(Sys.getenv('RCOUCHUTILS_TEST_CONFIG'))
 
-parts <- c('bulk','docs')
-couch.makedb(parts)
+parts <- c('bulk','docs',floor(as.POSIXlt(Sys.time())$sec*10000))
+makeresult <- couch.makedb(parts)
 dbname <-  couch.makedbname(parts)
 
-context('retrieving')
+context(paste('retrieving',dbname))
 test_that("can retrieve all docs",{
 
     doc <- list()
@@ -18,6 +18,7 @@ test_that("can retrieve all docs",{
         couch.put(parts,
                   docname=id,
                   doc=doc )
+        print(paste('put',id))
     }
 
     ## now use allDocs without a query
@@ -27,6 +28,9 @@ test_that("can retrieve all docs",{
     expect_that(res$total_rows,equals(4))
     expect_that(res$offset,equals(0))
     expect_that(length(res$rows),equals(4))
+
+    context('check rows')
+    print(length(res$rows))
     for(row in res$rows){
         expect_that(names(row),equals(c('id','key','value','doc')))
         expect_that(names(row$doc),equals(c('_id','_rev',
@@ -186,7 +190,11 @@ test_that('big bulk doc works',{
 test_that('can save nested structures okay',{
 
     env <- new.env()
-    res <- load(file='./tests/testthat/storedf.rda',envir = env)
+    dot_is <- getwd()
+    filewanted <- dir(dot_is,pattern='.rda$',recursive=TRUE,full.names=TRUE)
+    expect_that(length(filewanted),equals(1))
+    print(paste('loading',filewanted[1]))
+    res <- load(file=filewanted[1],envir = env)
     testlist <- env[[res]]
 
     res <- couch.bulk.docs.save(parts,testlist)
