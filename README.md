@@ -1,5 +1,7 @@
 # couchUtils.R
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/jmarca/rstats_couch_utils.svg)](https://greenkeeper.io/)
+
 This repository contains a file that I use everywhere in R whenever I
 want to stash or retrieve stuff from CouchDB.
 
