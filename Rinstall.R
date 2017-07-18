@@ -1,14 +1,12 @@
 dot_is <- getwd()
 envrr <- Sys.getenv()
-dependencies <- grep(pattern='npm_package_rDependencies'
-                    ,x=names(envrr),perl=TRUE,value=TRUE)
-if('npm_config_root' %in% names(envrr)){
-    ## operating under an NPM install
-    dot_is <- paste(getwd(),'..',sep='/')
-    print(paste('npm_config_root is',envrr$npm_config_root))
-    print(paste('I think root dir is',dot_is))
-}
 
+plaba <- regexpr(pattern='/node_modules',envrr['PWD'])
+if(plaba>0){
+    ## stoppoint <- plaba + 12 ## same as  attr(plaba,'match.length')
+    stoppoint <- plaba  ## actually, go one up
+    dot_is <- substr(envrr['PWD'],1,stoppoint)
+}
 node_paths <- dir(dot_is,pattern='\\.Rlibs',
                   full.names=TRUE,recursive=TRUE,
                   ignore.case=TRUE,include.dirs=TRUE,
