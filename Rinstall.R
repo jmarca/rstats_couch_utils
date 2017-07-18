@@ -1,9 +1,10 @@
-dot_is <- paste(getwd(),'..',sep='/')
+dot_is <- getwd()
 envrr <- Sys.getenv()
 dependencies <- grep(pattern='npm_package_rDependencies'
                     ,x=names(envrr),perl=TRUE,value=TRUE)
 if('npm_config_root' %in% names(envrr)){
     ## operating under an NPM install
+    dot_is <- paste(getwd(),'..',sep='/')
     print(paste('npm_config_root is',envrr$npm_config_root))
     print(paste('I think root dir is',dot_is))
 }
@@ -14,9 +15,12 @@ node_paths <- dir(dot_is,pattern='\\.Rlibs',
                   all.files = TRUE)
 path <- normalizePath(paste(dot_is,'.Rlibs',sep='/')
                     , winslash = "/", mustWork = FALSE)
-if(!file.exists('path')){
+if(!file.exists(path)){
     dir.create(path)
 }
+
+print(paste(path,paste(node_paths)))
+
 lib_paths <- .libPaths()
 .libPaths(c(path,node_paths,lib_paths))
 ## ready to go

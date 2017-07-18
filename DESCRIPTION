@@ -14,6 +14,5 @@ Imports:
     RCurl,
     plyr,
     rjson,
-    configr,
     mime
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1

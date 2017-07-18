@@ -6,8 +6,8 @@
   "directories": {
     "test": "test"
   },
-    "dependencies": {
-        "configr":"jmarca/configr"
+  "dependencies": {
+    "configr": "jmarca/configr"
   },
   "devDependencies": {
     "async": "",
@@ -16,8 +16,9 @@
     "request": ""
   },
   "scripts": {
-      "test": "Rscript Rtest.R",
-      "install":"Rscript Rinstall.R"
+    "test": "Rscript Rtest.R",
+    "preinstall": "Rscript RinstallDeps.R",
+    "install": "Rscript Rinstall.R"
   },
   "repository": {
     "type": "git",
