@@ -1,3 +1,4 @@
+print('rcouchutils Rinstall.R')
 dot_is <- getwd()
 envrr <- Sys.getenv()
 
@@ -17,7 +18,7 @@ if(!file.exists(path)){
     dir.create(path)
 }
 
-print(paste(path,paste(node_paths)))
+print(paste('installing to',path,paste(node_paths)))
 
 lib_paths <- .libPaths()
 .libPaths(c(path,node_paths,lib_paths))
