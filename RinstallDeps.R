@@ -6,7 +6,7 @@ node_paths <- dir(dot_is,pattern='\\.Rlibs',
                   all.files = TRUE)
 path <- normalizePath(paste(dot_is,'.Rlibs',sep='/')
                     , winslash = "/", mustWork = FALSE)
-if(!file.exists('path')){
+if(!file.exists(path)){
     dir.create(path)
 }
 lib_paths <- .libPaths()
