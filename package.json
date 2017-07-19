@@ -17,8 +17,7 @@
   },
   "scripts": {
     "test": "Rscript Rtest.R",
-    "preinstall": "Rscript RinstallDeps.R",
-    "prepublish": "npm install github:jmarca/configr",
+    "preinstall": "Rscript RinstallDeps.R & npm install github:jmarca/configr",
     "install": "Rscript Rinstall.R"
   },
   "repository": {
