@@ -20,11 +20,12 @@ if(!file.exists(path)){
 lib_paths <- .libPaths()
 .libPaths(c(path,node_paths,lib_paths))
 
+## make sure remotes is installed
+source("https://install-github.me/r-lib/remotes")
+
 if(length(find.package("roxygen2",quiet=TRUE)) == 0){
     install.packages("roxygen2",repos="https://cloud.r-project.org",lib=path)
 }
-if(length(find.package("devtools",quiet=TRUE)) == 0){
-    install.packages("devtools",repos="https://cloud.r-project.org",lib=path)
-}
-devtools::install_github("hadley/devtools")
-devtools::install_deps()
+remotes::install_github("hadley/devtools")
+remotes::install_github("tidyverse/magrittr")
+devtools::install_deps(dependencies=TRUE)
