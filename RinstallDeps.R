@@ -20,6 +20,9 @@ if(!file.exists(path)){
 lib_paths <- .libPaths()
 .libPaths(c(path,node_paths,lib_paths))
 
+print('configr RinstallDeps.R')
+print(paste(.libPaths()))
+
 ## make sure remotes is installed
 source("https://install-github.me/r-lib/remotes")
 
